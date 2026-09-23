@@ -36,6 +36,7 @@ def main() -> None:
 
         notes = parse_book_notes(path.read_text(encoding="utf-8"))
         order_counters: dict[int, int] = {}
+        occurrence_counters: dict[tuple[int, str], int] = {}
 
         for chapter, verse, catchword, note_text in notes:
             key = (chapter, verse)
@@ -43,9 +44,11 @@ def main() -> None:
             if verse_id is None:
                 continue
             plain = text_lookup[key]
-            anchor_pos = resolve_anchor(plain, catchword)
+            occurrence = occurrence_counters.get((verse_id, catchword), 0)
+            anchor_pos = resolve_anchor(plain, catchword, occurrence=occurrence)
             if anchor_pos < len(plain):
                 resolved += 1
+                occurrence_counters[(verse_id, catchword)] = occurrence + 1
             order = order_counters.get(verse_id, 0)
             order_counters[verse_id] = order + 1
             rows.append((verse_id, order, catchword, note_text, anchor_pos))

@@ -367,6 +367,39 @@ signal, not for anything needing real precision.
   spans), a footnote marker can fall inside a Strong's word's
   highlighted span — not fixed, since eliminating it would need
   non-trivial re-flowing logic for a purely cosmetic overlap.
+- **`anchor_utils.resolve_anchor()` needed two fix attempts, not one,
+  for the same underlying class of bug**: a verse where the KJV
+  translators attached the same marginal note to more than one
+  occurrence of an idiom (Ezekiel 44:5 has "mark well" twice, both
+  footnoted "Heb. set thine heart") had both notes resolving to the
+  *first* occurrence, since `resolve_anchor()` originally always
+  searched from the start of the text — reported directly as "AB" glued
+  onto one spot showing only one note on hover. The first fix (a single
+  forward-scanning cursor shared across all of a verse's notes) was
+  itself wrong and caught before shipping: Esther 1:19 lists its
+  "from him" note *after* "unto..." in document order despite "from
+  him" occurring earlier in the actual verse text, so a shared
+  monotonic cursor skipped past it and mis-anchored it to the wrong
+  spot. The correct fix tracks occurrence count **per distinct
+  catchword string** (`{catchword: count}`, scoped to one verse) rather
+  than one cursor for the whole verse — a repeated phrase still
+  resolves to successive occurrences, but unrelated catchwords never
+  interfere with each other regardless of what order the source lists
+  them in. Rebuilding both `footnotes` and `scofield_notes` with the
+  fix improved resolution from 6936/2926 to 6949/2926 phrase-anchored
+  notes respectively (the footnotes gain is real; Scofield had no
+  matching bug in the same run, just applied for consistency since it
+  shares the same helper). A handful of cases remain where two markers
+  still land on the exact same spot — checked directly, and unlike the
+  above, these are correct: either two genuinely separate KJV notes
+  attached to one single word (e.g. an "or, ..." alternate reading plus
+  a "Heb. ..." literal one on the same occurrence), or two catchword
+  strings where one is a substring/suffix of the other, coincidentally
+  sharing an end offset. The HTML already renders these as two distinct
+  `<a>` tags (`_verse_body_html()`'s `markers_by_pos` already keyed on
+  a list, not a single marker), so both are technically hoverable —
+  it's a usability limitation (two tiny adjacent superscript letters
+  with no visual gap) rather than a data or resolution bug, left as-is.
 - Every card in the Connections/Search/Strong's/Discover panes shares
   one `ClickableCard` base (`desktop/cards.py`) with a copy-to-clipboard
   button rendered from inline SVG (`_svg_icon()`) rather than a Unicode

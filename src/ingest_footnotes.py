@@ -36,10 +36,13 @@ def main() -> None:
                 if verse_id is None:
                     continue
                 plain, _spans, notes, _words = parse_verse_text(verse["text"])
+                occurrence_counts: dict[str, int] = {}
                 for order, (catchword, note_text) in enumerate(notes):
-                    anchor_pos = resolve_anchor(plain, catchword)
+                    occurrence = occurrence_counts.get(catchword, 0)
+                    anchor_pos = resolve_anchor(plain, catchword, occurrence=occurrence)
                     if anchor_pos < len(plain):
                         resolved += 1
+                        occurrence_counts[catchword] = occurrence + 1
                     rows.append((verse_id, order, catchword, note_text, anchor_pos))
 
     conn.executemany(
