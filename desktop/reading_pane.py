@@ -139,6 +139,14 @@ class ReadingPane(QWidget):
 
         self.browser = QTextBrowser()
         self.browser.setOpenExternalLinks(False)
+        # Footnote markers are <a href="fn:ID"> only so hovering can find
+        # them via anchorAt() in eventFilter() below -- they were never
+        # meant to be clickable navigation targets. Without this,
+        # QTextBrowser's own default click-to-navigate behavior tries to
+        # "load" fn:ID as if it were a real document, which it isn't,
+        # blanking the view with no way back (QTextBrowser's own
+        # back/forward history isn't wired to any UI in this app).
+        self.browser.setOpenLinks(False)
         c = colors()
         self.browser.setStyleSheet(
             f"QTextBrowser {{ background: {c['surface']}; border: 1px solid {c['border']}; "
