@@ -1,0 +1,26 @@
+#!/bin/bash
+# The actual executable behind the Bible Connections.app icon.
+#
+# GUI-launched apps on macOS don't get PATH from the user's shell
+# profile the way a Terminal window does -- plain 'python3' here can
+# resolve to Apple's bare Command Line Tools Python instead of the
+# Homebrew (or similar) install that actually has the pip-installed
+# packages, even though a Terminal session finds the right one and the
+# packages really are installed. Routing through a login-shell
+# invocation of the user's own default shell ($SHELL, whatever that
+# is) picks up the same PATH a real Terminal window would have.
+DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
+export DIR
+USER_SHELL="${SHELL:-/bin/bash}"
+
+if ! "$USER_SHELL" -l -c 'python3 -c "import fastapi, PySide6, sentence_transformers, bs4"' 2>/dev/null; then
+    osascript <<'APPLESCRIPT'
+display dialog "Required Python packages are not installed yet.
+
+Open Terminal in this folder and follow the Install the packages section in README.md, then try opening this app again." with title "Bible Connections" buttons {"OK"} default button "OK" with icon caution
+APPLESCRIPT
+    open -a Terminal "$DIR"
+    exit 1
+fi
+
+exec "$USER_SHELL" -l -c 'cd "$DIR/desktop" && exec python3 main.py'

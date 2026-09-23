@@ -1,0 +1,21 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+# Claude Code's own browser-preview tooling config -- not part of the project
+.claude/
+# bible.db (verses, connections, footnotes, Strong's, Scofield notes) IS
+# committed -- it's the pre-built content database the app ships with.
+# user_state.db is personal reading history and must never be committed.
+data/processed/user_state.db
+data/processed/*.db-journal
+data/processed/*.db-wal
+data/processed/*.db-shm
+data/raw/cross-references.zip
+# STEPBible-Data's CC BY 4.0 terms ask that this be redistributed only
+# from their own GitHub repo, not copied elsewhere -- re-download with
+# fetch_strongs_lexicon.py rather than committing a local copy.
+data/raw/tbesg.txt
+data/raw/tbesh.txt
+# intermediate build output -- packaging/build_icon.py regenerates this
+packaging/AppIcon.iconset/

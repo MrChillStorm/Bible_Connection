@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Bible Connections</title>
+<style>
+  :root {
+    --bg: #faf7f0; --ink: #2a241c; --muted: #8a7f6b; --accent: #7a3b2e;
+    --curated: #7a3b2e; --semantic: #2e5c7a; --card: #ffffff; --border: #e6ddc9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: Georgia, 'Iowan Old Style', serif;
+    padding: 24px 16px 80px;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; }
+  h1 { font-size: 1.6rem; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 20px; }
+  .search-row { display: flex; gap: 8px; margin-bottom: 8px; }
+  input[type=text] {
+    flex: 1; padding: 12px 14px; font-size: 1rem; border: 1px solid var(--border);
+    border-radius: 8px; background: var(--card); font-family: inherit;
+  }
+  button {
+    padding: 12px 18px; font-size: 0.95rem; border: none; border-radius: 8px;
+    background: var(--accent); color: white; cursor: pointer; font-family: inherit;
+  }
+  button:hover { opacity: 0.9; }
+  .hint { color: var(--muted); font-size: 0.8rem; margin-bottom: 16px; }
+  #results { display: none; }
+  .search-results { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+  .search-hit {
+    text-align: left; background: var(--card); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 12px; cursor: pointer; font-size: 0.92rem;
+  }
+  .search-hit:hover { border-color: var(--accent); }
+  .search-hit b { color: var(--accent); }
+  .verse-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 20px; margin-bottom: 20px;
+  }
+  .verse-ref { font-weight: bold; color: var(--accent); font-size: 1.1rem; margin-bottom: 6px; }
+  .verse-text { font-size: 1.15rem; line-height: 1.55; }
+  .section-title {
+    font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.06em;
+    margin: 22px 0 10px; display: flex; align-items: center; gap: 8px;
+  }
+  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .dot.curated { background: var(--curated); }
+  .dot.semantic { background: var(--semantic); }
+  .conn-list { display: flex; flex-direction: column; gap: 10px; }
+  .conn-item {
+    background: var(--card); border: 1px solid var(--border); border-left-width: 4px;
+    border-radius: 8px; padding: 12px 14px; cursor: pointer;
+  }
+  .conn-item.curated { border-left-color: var(--curated); }
+  .conn-item.semantic { border-left-color: var(--semantic); }
+  .conn-item:hover { background: #fff9ee; }
+  .conn-ref { font-weight: bold; font-size: 0.95rem; }
+  .conn-weight { float: right; color: var(--muted); font-size: 0.8rem; font-weight: normal; }
+  .conn-text { margin-top: 4px; font-size: 0.95rem; line-height: 1.4; }
+  .empty { color: var(--muted); font-size: 0.9rem; font-style: italic; }
+  .stats { color: var(--muted); font-size: 0.78rem; margin-top: 30px; text-align: center; }
+  .error { color: #a33; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Bible Connections</h1>
+  <div class="sub">KJV · curated cross-references + AI semantic similarity</div>
+
+  <form id="searchForm" class="search-row" onsubmit="doSearch(); return false;">
+    <input id="q" type="text" placeholder="Search a verse reference or a phrase (e.g. 'John 3:16' or 'shepherd')" />
+    <button type="submit">Search</button>
+  </form>
+  <div class="hint">Enter a reference like "Genesis 22:8" or "1 Samuel 17:45", or free text to search verse content.</div>
+
+  <div id="searchResults" class="search-results"></div>
+  <div id="results"></div>
+  <div id="stats" class="stats"></div>
+</div>
+
+<script>
+const API = '';
+
+async function loadStats() {
+  try {
+    const r = await fetch(API + '/api/stats');
+    const s = await r.json();
+    document.getElementById('stats').textContent =
+      `${s.verses.toLocaleString()} verses · ${s.curated_edges.toLocaleString()} curated connections · ${s.semantic_edges.toLocaleString()} semantic connections`;
+  } catch (e) {}
+}
+loadStats();
+
+async function doSearch() {
+  const q = document.getElementById('q').value.trim();
+  if (!q) return;
+
+  const refLike = /^\s*[1-3]?\s?[A-Za-z ]+\s+\d+:\d+\s*$/.test(q);
+  if (refLike) {
+    await loadVerse(q);
+    document.getElementById('searchResults').innerHTML = '';
+  } else {
+    const r = await fetch(API + '/api/search?q=' + encodeURIComponent(q));
+    const data = await r.json();
+    const box = document.getElementById('searchResults');
+    if (!data.results.length) {
+      box.innerHTML = '<div class="empty">No matches.</div>';
+    } else {
+      box.innerHTML = data.results.map(v =>
+        `<div class="search-hit" onclick="loadVerse('${v.ref.replace(/'/g, "\\'")}')"><b>${v.ref}</b> — ${v.text}</div>`
+      ).join('');
+    }
+    document.getElementById('results').style.display = 'none';
+  }
+}
+
+async function loadVerse(ref) {
+  document.getElementById('q').value = ref;
+  const r = await fetch(API + '/api/verse?ref=' + encodeURIComponent(ref) + '&limit=8');
+  const results = document.getElementById('results');
+  if (!r.ok) {
+    results.style.display = 'block';
+    results.innerHTML = `<div class="error">Could not find "${ref}".</div>`;
+    return;
+  }
+  const data = await r.json();
+  document.getElementById('searchResults').innerHTML = '';
+  results.style.display = 'block';
+
+  const renderConn = (items, cls) => items.length
+    ? `<div class="conn-list">${items.map(v => `
+        <div class="conn-item ${cls}" onclick="loadVerse('${v.ref.replace(/'/g, "\\'")}')">
+          <span class="conn-ref">${v.ref}<span class="conn-weight">${cls === 'curated' ? Math.round(v.weight) + ' votes' : v.weight.toFixed(3)}</span></span>
+          <div class="conn-text">${v.text}</div>
+        </div>`).join('')}</div>`
+    : '<div class="empty">None found.</div>';
+
+  results.innerHTML = `
+    <div class="verse-card">
+      <div class="verse-ref">${data.verse.ref}</div>
+      <div class="verse-text">${data.verse.text}</div>
+    </div>
+    <div class="section-title"><span class="dot curated"></span>Curated cross-references</div>
+    ${renderConn(data.curated, 'curated')}
+    <div class="section-title"><span class="dot semantic"></span>Semantic connections</div>
+    ${renderConn(data.semantic, 'semantic')}
+  `;
+}
+</script>
+</body>
+</html>

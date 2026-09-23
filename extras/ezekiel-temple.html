@@ -1,0 +1,712 @@
+<title>Ezekiel's Temple</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Work+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  :root{
+    --ink:#161c26;
+    --ink-2:#1f2632;
+    --ink-3:#2a3241;
+    --stone:#e7dcbf;
+    --stone-2:#d9caa0;
+    --stone-deep:#b9a878;
+    --gold:#c9a248;
+    --gold-bright:#e0bd63;
+    --text:#eee6cf;
+    --text-soft:#a99f86;
+    --panel-bg:#20272f;
+    --panel-border:#3a4353;
+    --line:#3a4353;
+    --bg:var(--ink);
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Work Sans',system-ui,sans-serif;
+    overflow:hidden;
+  }
+  #canvas-wrap{position:fixed;inset:0;z-index:0;}
+  #scene{width:100%;height:100%;display:block;touch-action:none;}
+
+  #boot{
+    position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+    background:var(--ink);color:var(--text-soft);font-family:'JetBrains Mono',monospace;
+    font-size:13px;letter-spacing:.04em;z-index:50;flex-direction:column;gap:10px;text-align:center;padding:24px;
+  }
+  #boot .spin{width:22px;height:22px;border:2px solid var(--line);border-top-color:var(--gold);border-radius:50%;animation:sp 1s linear infinite;}
+  @keyframes sp{to{transform:rotate(360deg);}}
+  #boot[hidden]{display:none;}
+
+  header.topbar{
+    position:fixed;top:0;left:0;right:0;z-index:10;
+    display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+    padding:calc(16px + env(safe-area-inset-top,0px)) 20px 14px;
+    background:linear-gradient(to bottom, rgba(22,28,38,.92), rgba(22,28,38,0));
+    pointer-events:none;
+  }
+  header.topbar .title-block{pointer-events:auto;}
+  h1{
+    margin:0;font-family:'Cormorant Garamond',serif;font-weight:600;font-style:italic;
+    font-size:clamp(22px,4vw,32px);color:var(--text);letter-spacing:.01em;text-shadow:0 2px 12px rgba(0,0,0,.5);
+  }
+  .subtitle{
+    margin:2px 0 0;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.06em;
+    color:var(--text-soft);text-transform:uppercase;
+  }
+  #panel-toggle{
+    pointer-events:auto;
+    background:var(--panel-bg);border:1px solid var(--panel-border);color:var(--text);
+    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.05em;text-transform:uppercase;
+    padding:9px 14px;border-radius:3px;cursor:pointer;white-space:nowrap;
+    display:flex;align-items:center;gap:7px;
+  }
+  #panel-toggle:hover{border-color:var(--gold);color:var(--gold-bright);}
+  #panel-toggle .dot{width:6px;height:6px;border-radius:50%;background:var(--gold);}
+
+  #panel{
+    position:fixed;top:0;right:0;bottom:0;width:360px;max-width:92vw;z-index:20;
+    background:var(--panel-bg);border-left:1px solid var(--panel-border);
+    padding:calc(20px + env(safe-area-inset-top,0px)) 22px calc(20px + env(safe-area-inset-bottom,0px));
+    overflow-y:auto;
+    transform:translateX(0);transition:transform .35s ease;
+    box-shadow:-24px 0 48px rgba(0,0,0,.35);
+  }
+  #panel.collapsed{transform:translateX(100%);}
+  #panel::-webkit-scrollbar{width:8px;}
+  #panel::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px;}
+
+  .panel-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;}
+  .panel-close{
+    background:none;border:none;color:var(--text-soft);font-size:20px;line-height:1;cursor:pointer;padding:2px 6px;
+  }
+  .panel-close:hover{color:var(--gold-bright);}
+
+  .lede{
+    font-size:14px;line-height:1.55;color:var(--text-soft);margin:4px 0 18px;
+  }
+  .lede b{color:var(--text);font-weight:600;}
+
+  .section-label{
+    font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;
+    color:var(--gold-bright);margin:22px 0 10px;display:flex;align-items:center;gap:8px;
+  }
+  .section-label::after{content:'';flex:1;height:1px;background:var(--line);}
+  .section-label:first-of-type{margin-top:0;}
+
+  .presets{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .preset-btn.wide{grid-column:1/-1;}
+  .preset-btn{
+    background:var(--ink-2);border:1px solid var(--panel-border);color:var(--text);
+    font-family:'Work Sans',sans-serif;font-size:12.5px;font-weight:500;
+    padding:10px 10px;border-radius:3px;cursor:pointer;text-align:left;
+  }
+  .preset-btn:hover{border-color:var(--gold);}
+  .preset-btn.active{background:var(--ink-3);border-color:var(--gold);color:var(--gold-bright);}
+
+  .toggle-row{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:9px 0;border-bottom:1px solid var(--line);font-size:13px;
+  }
+  .toggle-row:last-child{border-bottom:none;}
+  .switch{position:relative;width:34px;height:19px;flex:none;}
+  .switch input{opacity:0;width:100%;height:100%;position:absolute;margin:0;cursor:pointer;}
+  .switch .track{position:absolute;inset:0;background:var(--ink-3);border:1px solid var(--panel-border);border-radius:10px;transition:.2s;}
+  .switch .knob{position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;background:var(--text-soft);transition:.2s;}
+  .switch input:checked + .track{background:rgba(201,162,72,.25);border-color:var(--gold);}
+  .switch input:checked + .track .knob{transform:translateX(15px);background:var(--gold-bright);}
+
+  .legend-item{
+    display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);
+  }
+  .legend-item:last-child{border-bottom:none;}
+  .swatch{width:11px;height:11px;border-radius:2px;flex:none;margin-top:3px;border:1px solid rgba(255,255,255,.15);}
+  .legend-text{flex:1;min-width:0;}
+  .legend-name{font-size:13px;font-weight:600;color:var(--text);}
+  .legend-dim{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--stone-2);margin-top:1px;}
+  .legend-ref{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--gold-bright);margin-top:2px;letter-spacing:.03em;}
+
+  .note{
+    font-size:12px;line-height:1.6;color:var(--text-soft);margin:14px 0 0;padding:12px 13px;
+    background:var(--ink-2);border:1px solid var(--line);border-left:2px solid var(--gold);border-radius:2px;
+  }
+  .note + .note{margin-top:10px;}
+
+  #labels{position:fixed;inset:0;pointer-events:none;z-index:5;}
+  .tag{
+    position:absolute;transform:translate(-50%,-100%);
+    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.04em;color:var(--text);
+    background:rgba(22,28,38,.78);border:1px solid var(--panel-border);border-radius:2px;
+    padding:3px 7px;white-space:nowrap;backdrop-filter:blur(2px);
+  }
+  .tag::after{
+    content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);
+    border:4px solid transparent;border-top-color:var(--panel-border);
+  }
+
+  #tooltip{
+    position:fixed;z-index:30;max-width:280px;
+    background:var(--panel-bg);border:1px solid var(--gold);border-radius:3px;
+    padding:12px 14px;font-size:12.5px;line-height:1.5;color:var(--text);
+    box-shadow:0 12px 30px rgba(0,0,0,.4);pointer-events:none;
+  }
+  #tooltip[hidden]{display:none;}
+  #tooltip .t-name{font-weight:600;color:var(--gold-bright);font-size:13.5px;margin-bottom:3px;}
+  #tooltip .t-dim{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--stone-2);}
+  #tooltip .t-ref{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--text-soft);margin-top:5px;}
+
+  #compass{
+    position:fixed;bottom:calc(20px + env(safe-area-inset-bottom,0px));left:20px;z-index:8;
+    width:56px;height:56px;pointer-events:none;
+  }
+  #hint{
+    position:fixed;bottom:calc(20px + env(safe-area-inset-bottom,0px));left:90px;z-index:8;
+    font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--text-soft);
+    letter-spacing:.03em;pointer-events:none;
+  }
+
+  @media (max-width:640px){
+    #panel{width:100%;max-width:100%;top:auto;height:72vh;border-left:none;border-top:1px solid var(--panel-border);
+      border-radius:14px 14px 0 0;transform:translateY(0);}
+    #panel.collapsed{transform:translateY(100%);}
+    .presets{grid-template-columns:1fr 1fr;}
+    #hint{display:none;}
+    h1{font-size:22px;}
+  }
+</style>
+
+<div id="canvas-wrap"><canvas id="scene"></canvas></div>
+<div id="boot"><div class="spin"></div><div>Raising the outer wall — Ezekiel 40:5…</div></div>
+
+<header class="topbar">
+  <div class="title-block">
+    <h1>Ezekiel's Temple</h1>
+    <p class="subtitle">A measured reconstruction · Ezekiel 40–42</p>
+  </div>
+  <button id="panel-toggle" type="button"><span class="dot"></span><span id="panel-toggle-label">Measurements</span></button>
+</header>
+
+<div id="labels"></div>
+<div id="tooltip" hidden></div>
+
+<svg id="compass" viewBox="0 0 56 56">
+  <circle cx="28" cy="28" r="26" fill="rgba(32,39,47,.7)" stroke="#3a4353" stroke-width="1"/>
+  <g stroke="#3a4353" stroke-width="1">
+    <line x1="28" y1="4" x2="28" y2="9"/><line x1="28" y1="47" x2="28" y2="52"/>
+    <line x1="4" y1="28" x2="9" y2="28"/><line x1="47" y1="28" x2="52" y2="28"/>
+  </g>
+  <g id="compass-needle">
+    <path d="M28 9 L24 19 L28 16 L32 19 Z" fill="#e0bd63"/>
+    <path d="M28 47 L24 37 L28 40 L32 37 Z" fill="#565f6e"/>
+    <text x="28" y="6.5" text-anchor="middle" fill="#e0bd63" font-family="JetBrains Mono, monospace" font-size="7.5">N</text>
+  </g>
+</svg>
+<div id="hint">drag to orbit · scroll to zoom · tap a structure</div>
+
+<aside id="panel" class="collapsed">
+  <div class="panel-head">
+    <h1 style="font-size:19px;">Measurements</h1>
+    <button class="panel-close" id="panel-close" type="button" aria-label="Close">×</button>
+  </div>
+  <p class="lede">The entrance faces <b>east</b>; holiness increases toward the west. Every figure below is a <b>cubit</b> from the vision's own measuring reed — <b>6 long cubits</b>, each "a cubit and a handbreadth" (≈21 in / 53 cm) — <span class="legend-ref">40:5</span>.</p>
+
+  <div class="section-label">Views</div>
+  <div class="presets" id="presets">
+    <button class="preset-btn wide" data-view="plan">Plan View (straight down)</button>
+    <button class="preset-btn active" data-view="aerial">Aerial</button>
+    <button class="preset-btn" data-view="entrance">East Gate</button>
+    <button class="preset-btn" data-view="court">Inner Court</button>
+    <button class="preset-btn" data-view="sanctuary">Sanctuary</button>
+    <button class="preset-btn wide" data-view="river">The River, to Scale (47:1–5)</button>
+  </div>
+
+  <div class="section-label">Display</div>
+  <div class="toggle-row">
+    <span>Boundary wall (500 sq.)</span>
+    <label class="switch"><input type="checkbox" id="tgl-boundary" checked><span class="track"><span class="knob"></span></span></label>
+  </div>
+  <div class="toggle-row">
+    <span>Structure labels</span>
+    <label class="switch"><input type="checkbox" id="tgl-labels" checked><span class="track"><span class="knob"></span></span></label>
+  </div>
+  <div class="toggle-row">
+    <span>Ground grid (25-cubit)</span>
+    <label class="switch"><input type="checkbox" id="tgl-grid" checked><span class="track"><span class="knob"></span></span></label>
+  </div>
+
+  <div class="section-label">The Complex</div>
+  <div id="legend"></div>
+
+  <div class="note">The Hebrew of 42:20 measures the boundary wall in <i>reeds</i> — 500 reeds² ≈ 3,000 cubits² (about a mile), dwarfing everything inside it. Most translations and diagrams read it as 500 <i>cubits</i>² instead, which is what's modeled here; toggle it off to focus on the courts.</div>
+  <div class="note">Chapters 40–42 give exact gate, court, and sanctuary footprints, but not one building height. Ezekiel 41 reuses Solomon's temple's exact floor plan for the nave (40×20) and inner sanctuary (20×20), so their heights here are borrowed from Solomon's own figures rather than guessed — 30 cubits and 20 cubits (1 Kings 6:2, 6:20) — and the porch's 20 follows 2 Chronicles 3:4 the same way. Gate heights, the rear building's shape, and the altar (ch. 43) have no such anchor and stay schematic. Minor rooms — kitchens, singers' chambers, sacrifice tables (40:38–46; ch. 46) — are omitted for legibility.</div>
+  <div class="note">The river (47:1–12) starts as a trickle south of the temple threshold and gains a full 1,000 cubits between each depth Ezekiel wades through — ankle, knee, waist, then too deep to cross. Modeled at true scale, that's roughly eight times the length of the entire walled precinct; the "The River" view pulls back far enough to show all four markers, which is also why the temple shrinks to almost nothing behind them.</div>
+  <div class="note">The text gives no actual heights for any of this — only step counts — but 40:17–18 names a "lower pavement" beside the gates, set against a "higher" inner court. Read as two tiers rather than three, the outer gates' own floor is flush with the outer court around them, and both staircases (7 steps, then 8) climb at a matching, cubit-and-a-half-ish rise per step.</div>
+</aside>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+try{
+
+/* ---------- palette ---------- */
+const COL = {
+  ground:   0xc7b98a,
+  precinct: 0xe9dfbd,
+  boundary: 0x6e5c3a,
+  outerGate:0xc2ac6e,
+  innerGate:0xceb87e,
+  courtInner:0xd7c592,
+  altar:    0x5b4530,
+  altarTop: 0x7a5a3a,
+  porch:    0xcdbb8a,
+  nave:     0xcabb8f,
+  wall:     0xb8a878,
+  holy:     0x8f7638,
+  holyGlow: 0xe0bd63,
+  rear:     0xb4a575,
+  side:     0xa89968,
+  step:     0x9c8f66,
+  river:    0x2f7a8c,
+  riverMark:0xe0bd63
+};
+
+/* ---------- structure registry (drives legend + tooltips) ---------- */
+const STRUCT = [];
+function reg(name, dims, ref, note, colorHex){
+  STRUCT.push({name, dims, ref, note, color: '#'+colorHex.toString(16).padStart(6,'0')});
+  return STRUCT.length-1;
+}
+const iBoundary = reg('Boundary Wall','500 × 500 cubits (reed/cubit MT ambiguity)','42:15–20','Separates "the holy from the common."', COL.boundary);
+const iOuterGate = reg('Outer Gates (E · N · S)','50 deep × 25 wide cubits, 6 guard chambers, 7 steps','40:6–27','The gate’s own floor is flush with the outer court’s pavement — 40:17-18’s "lower pavement" reads as one shared tier, not a separate level under each gate.', COL.outerGate);
+const iOuterCourt = reg('Outer Court','100 cubits between outer & inner gates','40:17–19',null, COL.ground);
+const iInnerGate = reg('Inner Gates (E · N · S)','Same footprint as outer gates; reached by 8 steps','40:28–37','Porch faces the outer court, not the inner court (40:31,34,37) — the mirror of the outer gates.', COL.innerGate);
+const iInnerCourt = reg('Inner Court','100 × 100 cubits, raised above outer court','40:47',null, COL.courtInner);
+const iAltar = reg('Bronze Altar','Stepped hearth, base ≈18 × 18 cubits (schematic)','43:13–17','From ch. 43, shown here for context.', COL.altar);
+const iPorch = reg('Temple Porch','Footprint schematic — jambs of 5 cubits noted','40:48–49','Height (20) follows 2 Chr. 3:4 — whose own transmitted number, 120, is widely read as a copying error.', COL.porch);
+const iNave = reg('Holy Place (Nave)','40 × 20 cubits','41:1–2','Height (30) is not given here — borrowed from 1 Kings 6:2, since Solomon’s temple shares this exact footprint.', COL.nave);
+const iHoly = reg('Most Holy Place','20 × 20 cubits — a cube', '41:3–4','Height (20) likewise borrowed — Solomon’s inner sanctuary is the same 20×20 room, explicitly cubic (1 Kings 6:20).', COL.holy);
+const iRear = reg('Rear Building','Schematic massing behind the sanctuary','41:12','Exact footprint disputed among reconstructions.', COL.rear);
+const iSide = reg('Side Chambers','Three low stories around the nave (schematic)','41:5–11',null, COL.side);
+const iRiver = reg('The River','Emerges south of the threshold, flowing east — widens with no tributaries','47:1–2','Modeled to true scale, which is why the temple shrinks to a speck by the last marker.', COL.river);
+const iRiverMark = reg('Depth Markers','Ankle → knee → waist → too deep to cross, every 1,000 cubits','47:3–5', null, COL.riverMark);
+
+/* ---------- scene ---------- */
+const canvas = document.getElementById('scene');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+const DEFAULT_FOG_DENSITY = 0.0011;
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x161c26);
+scene.fog = new THREE.FogExp2(0x161c26, DEFAULT_FOG_DENSITY);
+
+const BASE_HFOV = 62; // keep roughly this much horizontal coverage at any aspect
+const camera = new THREE.PerspectiveCamera(45, innerWidth/innerHeight, 1, 8000);
+camera.position.set(50, 400, 440);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(30, 8, 0);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 40;
+controls.maxDistance = 4200; // far enough to pull back for the river's full 4,000-cubit journey (47:5)
+controls.maxPolarAngle = Math.PI*0.49;
+
+/* lights */
+scene.add(new THREE.HemisphereLight(0xdce6ff, 0x2a2115, 0.55));
+const sun = new THREE.DirectionalLight(0xffe9bd, 1.55);
+sun.position.set(420, 380, -180); // low east-ish, "sunrise" toward the entrance
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048,2048);
+sun.shadow.camera.left = -400; sun.shadow.camera.right = 400;
+sun.shadow.camera.top = 400; sun.shadow.camera.bottom = -400;
+sun.shadow.camera.far = 1200;
+sun.shadow.bias = -0.0007;
+scene.add(sun);
+const fill = new THREE.DirectionalLight(0x6a7fae, 0.35);
+fill.position.set(-300,200,300);
+scene.add(fill);
+const holyLight = new THREE.PointLight(0xe0bd63, 2.2, 140, 2);
+holyLight.position.set(-118, 26, 0);
+scene.add(holyLight);
+
+/* materials */
+const mat = c => new THREE.MeshStandardMaterial({color:c, roughness:0.92, metalness:0.04});
+const M = Object.fromEntries(Object.entries(COL).map(([k,v])=>[k,mat(v)]));
+// polygon-offset the pavement back in depth terms, not just geometrically — with far=8000 for the river view,
+// the depth buffer is too coarse at normal viewing distances to trust a small position-only epsilon alone
+M.precinct.polygonOffset = true;
+M.precinct.polygonOffsetFactor = 1;
+M.precinct.polygonOffsetUnits = 1;
+M.holy = new THREE.MeshStandardMaterial({color:COL.holy, roughness:0.7, metalness:0.15, emissive:0x3a2c0d, emissiveIntensity:0.5});
+M.altarTop = new THREE.MeshStandardMaterial({color:COL.altarTop, roughness:0.8});
+M.river = new THREE.MeshStandardMaterial({color:COL.river, roughness:0.25, metalness:0.1, emissive:0x123a44, emissiveIntensity:0.35, transparent:true, opacity:0.88});
+
+const root = new THREE.Group();
+scene.add(root);
+
+/* helper: box centered on x,z footprint, base at y0, given full width(w,x)/depth(d,z)/height */
+function box(w,h,d,material,x,y0,z,structIdx,group){
+  const geo = new THREE.BoxGeometry(w,h,d);
+  const m = new THREE.Mesh(geo, material);
+  m.position.set(x, y0+h/2, z);
+  m.castShadow = true; m.receiveShadow = true;
+  if(structIdx!==undefined) m.userData.struct = structIdx;
+  (group||root).add(m);
+  return m;
+}
+
+const labelAnchors = []; // {pos:THREE.Vector3, text}
+function anchor(x,y,z,text){ labelAnchors.push({pos:new THREE.Vector3(x,y,z), text}); }
+
+/* ================= GROUND ================= */
+const ground = box(900,2,900, M.ground, 30,-2,0);
+ground.receiveShadow = true;
+// carries the eye out to the river's fourth marker (47:5), ~3950 cubits east of its source
+const riverGround = box(3720,2,420, M.ground, 2340,-2,0);
+riverGround.receiveShadow = true;
+const precinct = box(488,3.5,488, M.precinct, 0,0,0); // flush with the outer gates' own floor — 40:17-18's "lower pavement" is one tier, not a third one under the gates
+precinct.receiveShadow = true;
+
+const grid = new THREE.GridHelper(488, 488/25, 0x00000000, 0x000000);
+grid.material.opacity = 0.14; grid.material.transparent = true;
+grid.position.y = 3.52;
+root.add(grid);
+
+/* ================= BOUNDARY WALL (500 x 500, centered at origin) ================= */
+const boundaryGroup = new THREE.Group();
+const OB = 250, WT = 6, WH = 6, GATE_W = 25; // 40:5 ; 42:15-20 — GATE_W must match buildGate's GW
+// a wall run along the given fixed coordinate, split around a centered gate opening when gapWidth is given
+function wallRun(fixedAxis, fixedCoord, gapWidth){
+  const segLen = (500 - (gapWidth||0))/2;
+  const segCenter = (gapWidth||0)/2 + segLen/2;
+  const offsets = gapWidth ? [-segCenter, segCenter] : [0];
+  offsets.forEach(off=>{
+    const len = gapWidth ? segLen : 500;
+    if(fixedAxis==='z') box(len, WH, WT, M.boundary, off, 0, fixedCoord, iBoundary, boundaryGroup);
+    else box(WT, WH, len, M.boundary, fixedCoord, 0, off, iBoundary, boundaryGroup);
+  });
+}
+wallRun('z', OB-WT/2, GATE_W);   // south wall — opening for the south gate
+wallRun('z', -OB+WT/2, GATE_W);  // north wall — opening for the north gate
+wallRun('x', OB-WT/2, GATE_W);   // east wall — opening for the east gate
+wallRun('x', -OB+WT/2, null);    // west wall — no gate (41:12's rear building faces this side), stays solid
+root.add(boundaryGroup);
+anchor(0, WH+2, OB-3, 'Boundary Wall — 500² cubits');
+
+/* ================= GATE BUILDER ================= */
+const PRECINCT_Y = 3.5; // must match the `precinct` pavement box's height — 40:17-18's "lower pavement" tier, flush with the outer gates' own floor
+/* A gate: depth 50 along `axis`, width 25 across; 3 guard-chamber pairs + inner porch + outer steps. 40:6-27 (outer) / 40:28-37 (inner) */
+function buildGate(center, axis, depthSign, mat, structIdx, gateH, stepCount, baseY, porchByEntry){
+  const g = new THREE.Group();
+  const GW = 25, GD = 50, chamW = 5.5, chamD = 6, passW = 8;
+  // outer gates (40:6-9): porch at the far end, facing the outer court/temple.
+  // inner gates (40:31,34,37): porch sits with the steps, facing back toward the outer court —
+  // so the chamber row shifts toward the plain far end that opens straight into the inner court.
+  const chamStart = porchByEntry ? -8 : -22; // flush the chamber row's far edge against the base slab, same as the porch
+  const porchX = porchByEntry ? -21 : 21; // flush with the base slab's edge either way — no exposed lip
+  for(let i=0;i<3;i++){
+    const along = chamStart + i*15; // position along depth, three pairs
+    [1,-1].forEach(side=>{
+      box(chamD, gateH*0.55, chamW, mat, along, baseY, side*(passW/2+chamW/2), structIdx, g);
+    });
+  }
+  box(8, gateH*0.7, GW, mat, porchX, baseY, 0, structIdx, g);
+  // solid base, filling the full rise to baseY so the gate reads as seated on the ground/platform, not capped over a gap.
+  // Lifted a hair above 0: for outer gates baseY now exactly equals the precinct pavement's own height, so their
+  // top faces were perfectly coplanar and z-fighting under the renderer — this epsilon settles which one wins.
+  box(GD, baseY, GW, mat, 0, 0.15, 0, structIdx, g);
+  // approach steps: outer gates climb from true exterior ground (0); inner gates sit within the outer court,
+  // so their steps climb from the court's own pavement (PRECINCT_Y), not from 0
+  const groundY = porchByEntry ? PRECINCT_Y : 0;
+  const rise = (baseY-groundY)/stepCount;
+  for(let s=0;s<stepCount;s++){
+    const y0 = groundY + rise*(stepCount-1-s); // s=0 sits closest to the gate body, so it's the highest step, reaching baseY
+    box(2.2, rise, GW*0.9 - s*0.4, M.step, -27-s*2.2, y0, 0, undefined, g);
+  }
+  // orient: axis 'x' => gate runs along X (east/west gate); 'z' => runs along Z (north/south gate)
+  if(axis==='z'){ g.rotation.y = Math.PI/2; }
+  g.position.set(center.x, 0, center.z);
+  if(depthSign<0) g.rotation.y += Math.PI;
+  root.add(g);
+  return g;
+}
+
+/* Outer gates — 40:6-27. Depth 50, width 25, sit flush with outer wall (|.|=250) */
+buildGate({x:225,z:0}, 'x', -1, M.outerGate, iOuterGate, 18, 7, 3.5, false);
+buildGate({x:0,z:225}, 'z', 1, M.outerGate, iOuterGate, 18, 7, 3.5, false);
+buildGate({x:0,z:-225}, 'z', -1, M.outerGate, iOuterGate, 18, 7, 3.5, false);
+anchor(248, 20, 0, 'Outer East Gate');
+anchor(0, 20, 248, 'Outer South Gate');
+anchor(0, 20, -248, 'Outer North Gate');
+
+/* Outer court — the paved ring between outer & inner gates, 100 cubits deep. 40:17-19 */
+anchor(150, 3, 150, 'Outer Court');
+
+/* Inner gates — 40:28-37, elevated by 8 steps onto the inner-court platform */
+const PLAT_H = 7.5; // the "higher" tier of 40:17-18 — PRECINCT_Y (3.5) plus a matching 8-step, 0.5-per-step rise at the inner gate
+buildGate({x:75,z:0}, 'x', -1, M.innerGate, iInnerGate, 18, 8, PLAT_H, true);
+buildGate({x:0,z:75}, 'z', 1, M.innerGate, iInnerGate, 18, 8, PLAT_H, true);
+buildGate({x:0,z:-75}, 'z', -1, M.innerGate, iInnerGate, 18, 8, PLAT_H, true);
+anchor(98, 22, 0, 'Inner East Gate');
+
+/* ================= INNER COURT — 100 x 100, raised. 40:47 ================= */
+box(100, PLAT_H, 100, M.courtInner, 0, 0, 0, iInnerCourt);
+anchor(-5, PLAT_H+2, 30, 'Inner Court — 100² cubits');
+
+/* Altar — schematic, ch.43, standing before the temple in the inner court */
+const altarGroup = new THREE.Group();
+box(18,2,18, M.altar, 0,0,0, iAltar, altarGroup);
+box(16,4,16, M.altar, 0,2,0, iAltar, altarGroup);
+box(12,4,12, M.altarTop, 0,6,0, iAltar, altarGroup);
+[[5,5],[5,-5],[-5,5],[-5,-5]].forEach(([hx,hz])=>box(1,1.6,1, M.altarTop, hx,10,hz, iAltar, altarGroup));
+altarGroup.position.set(-18, PLAT_H, 0);
+root.add(altarGroup);
+anchor(-18, PLAT_H+12, 0, 'Bronze Altar');
+
+/* ================= TEMPLE BUILDING (west end, x negative). ch.41 ================= */
+const TZ = PLAT_H; // sits on same platform level as inner court
+box(100, TZ, 40, M.courtInner, -100, 0, 0, iInnerCourt); // temple-zone platform, contiguous with inner court
+
+// Porch / vestibule — schematic footprint, 40:48-49
+box(12, 20, 22, M.porch, -56, TZ, 0, iPorch);
+anchor(-56, TZ+21, 12, 'Temple Porch');
+
+// Holy Place (nave) — 40 x 20 cubits, 41:1-2
+box(40, 30, 20, M.nave, -82, TZ, 0, iNave);
+anchor(-82, TZ+31, 11, 'Holy Place — 40×20 cubits');
+
+// Side chambers flanking the nave — schematic, 41:5-11
+box(40, 14, 5, M.side, -82, TZ, 13.5, iSide);
+box(40, 14, 5, M.side, -82, TZ, -13.5, iSide);
+anchor(-82, TZ+15, 16, 'Side Chambers');
+
+// Partition wall — 6 cubits, 41:3
+box(6, 30, 22, M.wall, -105, TZ, 0);
+
+// Most Holy Place — 20 x 20 cubits, a cube by analogy to 1 Kings 6:20
+box(20, 20, 20, M.holy, -118, TZ, 0, iHoly);
+anchor(-118, TZ+21, 11, 'Most Holy Place — 20³');
+
+// Rear building — schematic massing, 41:12
+box(22, 18, 30, M.rear, -139, TZ, 0, iRear);
+anchor(-139, TZ+19, 15, 'Rear Building');
+
+/* ================= THE RIVER — 47:1-12 ================= */
+// emerges south of the temple's threshold (47:1: "the right side of the house" = south, given the east-facing house) and flows east.
+// South is +Z here: with east (+X) on screen-right in a straight-down view, north must render as screen-up, and
+// empirically the +Z anchors are the ones rendering at the bottom (screen-down) — so +Z is south, not north.
+const RIVER_SRC_X = -50, RIVER_Z = 6, RIVER_END_X = 4100;
+const RIVER_EXIT_Y = 0; // ground level, beyond the boundary wall
+function riverWidth(x){ return 2 + ((x-RIVER_SRC_X)/(RIVER_END_X-RIVER_SRC_X))*46; } // widens with distance — stands in for the growing depth 47:3-5 describes
+const riverGroup = new THREE.Group();
+function riverRun(xStart, xEnd, y0){
+  const n = Math.max(1, Math.round((xEnd-xStart)/170));
+  for(let i=0;i<n;i++){
+    const x0 = xStart + (xEnd-xStart)*i/n, x1 = xStart + (xEnd-xStart)*(i+1)/n;
+    const width = (riverWidth(x0)+riverWidth(x1))/2;
+    box(x1-x0+0.3, 0.5, width, M.river, (x0+x1)/2, y0, RIVER_Z, iRiver, riverGroup);
+  }
+}
+riverRun(RIVER_SRC_X, 100, TZ);              // temple zone, inner court, and inner gate — all one platform height
+box(0.5, TZ-PRECINCT_Y+0.5, riverWidth(100), M.river, 100, PRECINCT_Y, RIVER_Z, iRiver, riverGroup); // the precinct sits lower than the inner platform — a real drop, rendered as a small cascade rather than hidden
+riverRun(100, 200, PRECINCT_Y);              // outer court, on top of its own pavement
+// 200–250 (the outer gate) is skipped — its solid base sits at a third height, so the river is shown passing beneath it, like a culvert
+riverRun(250, RIVER_END_X, RIVER_EXIT_Y);    // beyond the boundary wall
+root.add(riverGroup);
+anchor(RIVER_SRC_X-3, TZ+3, RIVER_Z+7, 'The River — south of the threshold');
+
+// depth markers at each 1,000-cubit interval — rendered true to scale, so the temple recedes behind them
+[
+  {x: RIVER_SRC_X+1000, label:'Ankle-deep — 1,000 cubits (47:3)'},
+  {x: RIVER_SRC_X+2000, label:'Knee-deep — 2,000 cubits (47:4)'},
+  {x: RIVER_SRC_X+3000, label:'Waist-deep — 3,000 cubits (47:4)'},
+  {x: RIVER_SRC_X+4000, label:'Too deep to cross — 4,000 cubits (47:5)'},
+].forEach(m=>{
+  const y0 = RIVER_EXIT_Y;
+  box(1.5, 14, 1.5, M.riverMark, m.x, y0, RIVER_Z+11, iRiverMark);
+  anchor(m.x, y0+15, RIVER_Z+11, m.label);
+});
+
+/* ================= interaction: raycast tooltip ================= */
+const ray = new THREE.Raycaster();
+const ndc = new THREE.Vector2();
+const tooltip = document.getElementById('tooltip');
+function showTooltip(idx, clientX, clientY){
+  const s = STRUCT[idx];
+  tooltip.innerHTML = `<div class="t-name">${s.name}</div><div class="t-dim">${s.dims}</div><div class="t-ref">Ezekiel ${s.ref}${s.note? ' · '+s.note:''}</div>`;
+  tooltip.style.left = Math.min(clientX+14, innerWidth-296)+'px';
+  tooltip.style.top = Math.min(clientY+14, innerHeight-120)+'px';
+  tooltip.hidden = false;
+}
+renderer.domElement.addEventListener('pointerdown', e=>{
+  const rect = renderer.domElement.getBoundingClientRect();
+  ndc.x = ((e.clientX-rect.left)/rect.width)*2-1;
+  ndc.y = -((e.clientY-rect.top)/rect.height)*2+1;
+  ray.setFromCamera(ndc, camera);
+  const hits = ray.intersectObjects(root.children, true).filter(h=>h.object.userData.struct!==undefined);
+  if(hits.length){ showTooltip(hits[0].object.userData.struct, e.clientX, e.clientY); }
+  else { tooltip.hidden = true; }
+});
+
+/* ================= labels overlay ================= */
+const labelsEl = document.getElementById('labels');
+const tagEls = labelAnchors.map(a=>{
+  const d = document.createElement('div');
+  d.className = 'tag'; d.textContent = a.text;
+  labelsEl.appendChild(d);
+  return d;
+});
+let showLabels = true;
+function updateLabels(){
+  const v = new THREE.Vector3();
+  const candidates = [];
+  labelAnchors.forEach((a,i)=>{
+    const el = tagEls[i];
+    if(!showLabels){ el.style.display='none'; return; }
+    v.copy(a.pos).project(camera);
+    if(v.z>1){ el.style.display='none'; return; }
+    const x = (v.x*0.5+0.5)*innerWidth, y = (1-(v.y*0.5+0.5))*innerHeight;
+    if(x<-80||x>innerWidth+80||y<-40||y>innerHeight+40){ el.style.display='none'; return; }
+    candidates.push({el, x, y, dist:camera.position.distanceToSquared(a.pos)});
+  });
+  // nearer labels win when two would overlap on screen
+  candidates.sort((a,b)=>a.dist-b.dist);
+  const placed = [];
+  candidates.forEach(c=>{
+    const clash = placed.some(p=>Math.abs(p.x-c.x)<72 && Math.abs(p.y-c.y)<24);
+    if(clash){ c.el.style.display='none'; return; }
+    placed.push(c);
+    c.el.style.display='block';
+    c.el.style.left = c.x+'px'; c.el.style.top = c.y+'px';
+  });
+}
+
+/* compass needle tracks true north (-Z) in screen space as the camera orbits */
+const compassNeedle = document.getElementById('compass-needle');
+const _cv0 = new THREE.Vector3(), _cvN = new THREE.Vector3();
+function updateCompass(){
+  _cv0.copy(controls.target).project(camera);
+  _cvN.copy(controls.target).add(new THREE.Vector3(0,0,-40)).project(camera);
+  const dx = (_cvN.x-_cv0.x), dy = -(_cvN.y-_cv0.y);
+  const deg = Math.atan2(dx, -dy) * 180/Math.PI;
+  compassNeedle.setAttribute('transform', `rotate(${deg} 28 28)`);
+}
+
+/* ================= UI wiring ================= */
+document.getElementById('tgl-boundary').addEventListener('change', e=>boundaryGroup.visible=e.target.checked);
+document.getElementById('tgl-labels').addEventListener('change', e=>showLabels=e.target.checked);
+document.getElementById('tgl-grid').addEventListener('change', e=>grid.visible=e.target.checked);
+
+const panel = document.getElementById('panel');
+function setPanel(open){ panel.classList.toggle('collapsed', !open); document.getElementById('panel-toggle-label').textContent = open? 'Hide' : 'Measurements'; }
+document.getElementById('panel-toggle').addEventListener('click', ()=>setPanel(panel.classList.contains('collapsed')));
+document.getElementById('panel-close').addEventListener('click', ()=>setPanel(false));
+
+/* legend */
+const legendEl = document.getElementById('legend');
+[iBoundary,iOuterGate,iOuterCourt,iInnerGate,iInnerCourt,iAltar,iPorch,iNave,iHoly,iSide,iRear,iRiver,iRiverMark].forEach(idx=>{
+  const s = STRUCT[idx];
+  const row = document.createElement('div');
+  row.className = 'legend-item';
+  row.innerHTML = `<span class="swatch" style="background:${s.color}"></span>
+    <span class="legend-text">
+      <div class="legend-name">${s.name}</div>
+      <div class="legend-dim">${s.dims}</div>
+      <div class="legend-ref">${s.ref}${s.note? ' — '+s.note:''}</div>
+    </span>`;
+  legendEl.appendChild(row);
+});
+
+/* camera presets */
+const VIEWS = {
+  plan:      { pos:'plan',        target:[30,0,0] },
+  aerial:    { pos:[50,400,440],  target:[30,8,0] },
+  entrance:  { pos:[300,55,70],   target:[130,10,0] },
+  court:     { pos:[70,95,150],   target:[0,4,0] },
+  sanctuary: { pos:[-95,70,110],  target:[-105,16,0] },
+  river:     { pos:[1800,1300,2500], target:[2025,20,0] },
+};
+// distance needed, at the current aspect ratio, for a true top-down view to keep
+// a `halfSize`-cubit-radius square fully in frame (mirrors the adaptive-FOV logic in onResize)
+function planDistance(halfSize){
+  const hfov0 = THREE.MathUtils.degToRad(BASE_HFOV);
+  let vfov = 2*Math.atan(Math.tan(hfov0/2)/camera.aspect);
+  vfov = THREE.MathUtils.clamp(vfov, THREE.MathUtils.degToRad(30), THREE.MathUtils.degToRad(78));
+  const hfov = 2*Math.atan(Math.tan(vfov/2)*camera.aspect);
+  const distForWidth = halfSize/Math.tan(hfov/2);
+  const distForHeight = halfSize/Math.tan(vfov/2);
+  return Math.max(distForWidth, distForHeight) * 1.08;
+}
+let tween = null;
+function goTo(key){
+  document.querySelectorAll('.preset-btn').forEach(b=>b.classList.toggle('active', b.dataset.view===key));
+  const v = VIEWS[key];
+  const p0 = camera.position.clone(), t0 = controls.target.clone();
+  const t1 = new THREE.Vector3(...v.target);
+  let p1;
+  if(v.pos==='plan'){
+    const D = planDistance(300);
+    p1 = new THREE.Vector3(t1.x, t1.y+D, t1.z + D*0.02); // near-vertical; tiny tilt avoids the orbit-control pole singularity
+  } else {
+    p1 = new THREE.Vector3(...v.pos);
+  }
+  const start = performance.now(), dur = 750;
+  const fog0 = scene.fog.density, fog1 = key==='river' ? 0.00016 : DEFAULT_FOG_DENSITY;
+  if(tween) cancelAnimationFrame(tween);
+  function step(now){
+    const k = Math.min(1,(now-start)/dur);
+    const e = k<0.5 ? 4*k*k*k : 1-Math.pow(-2*k+2,3)/2;
+    camera.position.lerpVectors(p0,p1,e);
+    controls.target.lerpVectors(t0,t1,e);
+    scene.fog.density = fog0 + (fog1-fog0)*e;
+    if(k<1) tween = requestAnimationFrame(step);
+  }
+  tween = requestAnimationFrame(step);
+}
+document.getElementById('presets').addEventListener('click', e=>{
+  const b = e.target.closest('.preset-btn');
+  if(b) goTo(b.dataset.view);
+});
+
+/* ================= resize / loop ================= */
+function onResize(){
+  camera.aspect = innerWidth/innerHeight;
+  const hfov = THREE.MathUtils.degToRad(BASE_HFOV);
+  const vfov = 2*Math.atan(Math.tan(hfov/2)/camera.aspect);
+  camera.fov = THREE.MathUtils.clamp(THREE.MathUtils.radToDeg(vfov), 30, 78);
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+}
+addEventListener('resize', onResize);
+onResize();
+
+function loop(){
+  controls.update();
+  updateLabels();
+  updateCompass();
+  renderer.render(scene, camera);
+  requestAnimationFrame(loop);
+}
+document.getElementById('boot').hidden = true;
+loop();
+
+}catch(err){
+  const b = document.getElementById('boot');
+  b.hidden = false;
+  b.innerHTML = '<div style="color:#e0bd63;font-family:JetBrains Mono,monospace;font-size:12px;max-width:420px;line-height:1.6;">Couldn\'t load the 3D engine.<br>'+String(err && err.message || err)+'</div>';
+}
+</script>

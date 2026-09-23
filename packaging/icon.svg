@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <clipPath id="squircle">
+      <rect x="0" y="0" width="1024" height="1024" rx="225" ry="225"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#squircle)">
+    <rect width="1024" height="1024" fill="#5a2a20"/>
+
+    <!-- spine, sitting behind the pages -->
+    <rect x="491" y="300" width="42" height="450" fill="#3a1a12"/>
+
+    <!-- left page -->
+    <path d="M 512 390 L 150 300 L 150 730 L 512 660 Z" fill="#f4ead9"/>
+    <!-- right page -->
+    <path d="M 512 390 L 874 300 L 874 730 L 512 660 Z" fill="#e6d8c0"/>
+
+    <!-- connection arc, linking a point on each page: bold enough to
+         still read at 32px/16px, unlike a thin decorative line -->
+    <path d="M 300 460 Q 512 210 724 430" fill="none" stroke="#3a1a12" stroke-width="34" stroke-linecap="round" opacity="0.35"/>
+    <path d="M 300 460 Q 512 210 724 430" fill="none" stroke="#2e5c7a" stroke-width="20" stroke-linecap="round"/>
+    <circle cx="300" cy="460" r="30" fill="#2e5c7a"/>
+    <circle cx="724" cy="430" r="30" fill="#2e5c7a"/>
+  </g>
+</svg>
