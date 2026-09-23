@@ -11,6 +11,8 @@ USER_SCHEMA_PATH = Path(__file__).resolve().parent / "user_schema.sql"
 
 _LEGACY_USER_TABLES = ("reading_state", "app_state", "book_status")
 _LEGACY_USER_DB_PATH = ROOT / "data" / "processed" / "user_state.db"  # pre-homedir location
+# pre-rename ("Bible Connections", plural) homedir location
+_LEGACY_HOMEDIR_USER_DB_PATH = Path(user_data_dir("Bible Connections", appauthor=False)) / "user_state.db"
 
 # The OS's conventional per-user application-data directory --
 # deliberately outside this project folder, so personal state isn't
@@ -19,7 +21,7 @@ _LEGACY_USER_DB_PATH = ROOT / "data" / "processed" / "user_state.db"  # pre-home
 # redownloading the project folder doesn't strand anyone's progress.
 # appauthor=False skips Windows' extra publisher-named subfolder, which
 # this project has no use for.
-USER_DB_PATH = Path(user_data_dir("Bible Connections", appauthor=False)) / "user_state.db"
+USER_DB_PATH = Path(user_data_dir("Bible Connection", appauthor=False)) / "user_state.db"
 
 
 def get_connection() -> sqlite3.Connection:
@@ -106,13 +108,22 @@ def _migrate_legacy_user_state(content_conn: sqlite3.Connection, user_conn: sqli
 
 
 def _migrate_user_db_location() -> None:
-    """user_state.db used to live inside this project folder
-    (data/processed/user_state.db) before it moved to the OS's proper
-    per-user directory. Moves the file over on first run after the
-    change. Must run before anything ever calls sqlite3.connect() on
-    the new path -- that call alone creates an empty file, which would
-    make this look like a fresh install and the check below would
-    wrongly skip the move."""
+    """user_state.db has moved twice: first from inside this project
+    folder to the OS's per-user directory, then -- when the app was
+    renamed from 'Bible Connections' to 'Bible Connection' -- from that
+    directory's old plural name to the current singular one. Each hop
+    moves the file over on first run after the change and is a no-op
+    once done; a very old install jumps straight from the project
+    folder to the final location rather than through the intermediate
+    plural-named one. Must run before anything ever calls
+    sqlite3.connect() on the new path -- that call alone creates an
+    empty file, which would make this look like a fresh install and
+    the checks below would wrongly skip the move."""
     if _LEGACY_USER_DB_PATH.exists() and not USER_DB_PATH.exists():
         USER_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
         shutil.move(str(_LEGACY_USER_DB_PATH), str(USER_DB_PATH))
+        return
+
+    if _LEGACY_HOMEDIR_USER_DB_PATH.exists() and not USER_DB_PATH.exists():
+        USER_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(_LEGACY_HOMEDIR_USER_DB_PATH), str(USER_DB_PATH))

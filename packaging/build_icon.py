@@ -1,4 +1,4 @@
-"""Regenerates Bible Connections.app's icon from packaging/icon.svg --
+"""Regenerates Bible Connection.app's icon from packaging/icon.svg --
 run this after editing the SVG. Uses PySide6's QSvgRenderer (already a
 project dependency, via desktop/cards.py's own _svg_icon()) rather than
 pulling in Pillow or another image library just for this.
@@ -17,7 +17,7 @@ from PySide6.QtWidgets import QApplication
 ROOT = Path(__file__).resolve().parent.parent
 SVG_PATH = Path(__file__).resolve().parent / "icon.svg"
 ICONSET_DIR = Path(__file__).resolve().parent / "AppIcon.iconset"
-ICNS_DEST = ROOT / "Bible Connections.app" / "Contents" / "Resources" / "AppIcon.icns"
+ICNS_DEST = ROOT / "Bible Connection.app" / "Contents" / "Resources" / "AppIcon.icns"
 
 # name -> pixel size, per Apple's required iconset naming convention
 SIZES = {

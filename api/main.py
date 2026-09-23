@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from connections import find_verse, get_connections, search_text, verse_ref
 from db import get_connection
 
-app = FastAPI(title="Bible Connections API")
+app = FastAPI(title="Bible Connection API")
 app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]
 )

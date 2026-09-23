@@ -1,4 +1,4 @@
-' Bible Connections launcher (Windows).
+' Bible Connection launcher (Windows).
 '
 ' Runs with no visible console window -- unlike a plain .bat double-
 ' click, which always flashes a black Command Prompt window -- and
@@ -29,7 +29,7 @@ If exitCode <> 0 Then
     MsgBox "Required Python packages are not installed yet." & vbCrLf & vbCrLf & _
            "A Command Prompt window will open in this folder -- follow the " & _
            "Install the packages section in README.md there, then try opening " & _
-           "this app again.", vbExclamation, "Bible Connections"
+           "this app again.", vbExclamation, "Bible Connection"
     shell.Run "cmd.exe /k cd /d " & Q & projectDir & Q, 1, False
     WScript.Quit 1
 End If

@@ -1,4 +1,4 @@
-' Run this once (double-click it). Creates a "Bible Connections"
+' Run this once (double-click it). Creates a "Bible Connection"
 ' shortcut on your Desktop, with a real icon, pointing at launch.vbs in
 ' this same folder -- that shortcut is what you double-click every time
 ' after this to actually open the app.
@@ -18,14 +18,14 @@ scriptDir = fso.GetParentFolderName(WScript.ScriptFullName)
 desktopPath = shell.SpecialFolders("Desktop")
 Q = Chr(34)
 
-Set shortcut = shell.CreateShortcut(desktopPath & "\Bible Connections.lnk")
+Set shortcut = shell.CreateShortcut(desktopPath & "\Bible Connection.lnk")
 shortcut.TargetPath = "wscript.exe"
 shortcut.Arguments = Q & scriptDir & "\launch.vbs" & Q
-shortcut.IconLocation = scriptDir & "\BibleConnections.ico"
+shortcut.IconLocation = scriptDir & "\BibleConnection.ico"
 shortcut.WorkingDirectory = scriptDir
-shortcut.Description = "Bible Connections"
+shortcut.Description = "Bible Connection"
 shortcut.Save
 
-MsgBox "A Bible Connections shortcut with its own icon was added to your " & _
+MsgBox "A Bible Connection shortcut with its own icon was added to your " & _
        "Desktop." & vbCrLf & vbCrLf & "Double-click it any time to open the app.", _
-       vbInformation, "Bible Connections"
+       vbInformation, "Bible Connection"

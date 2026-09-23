@@ -35,7 +35,7 @@ even live in the same directory:
   by normal use of the app, and committed to git so a fresh clone
   works immediately.
 - **`user_state.db`, in the OS's per-user data directory** (e.g.
-  `~/Library/Application Support/Bible Connections/` on macOS, via the
+  `~/Library/Application Support/Bible Connection/` on macOS, via the
   `platformdirs` package — `db.USER_DB_PATH`) — reading position,
   last-opened book, read/unread checkboxes. The only thing that
   changes as you read, and deliberately outside the project folder
@@ -99,9 +99,24 @@ strand your history behind. Fixed by moving it again, this time out of
 the project entirely and into the OS's per-user data directory via
 `platformdirs.user_data_dir()`. `db._migrate_user_db_location()`
 handles this one the same way — moves the file on first run after the
-change, a no-op afterward. Both migrations run unconditionally on
-every `get_user_connection()` call; they're cheap existence checks
-when there's nothing left to migrate.
+change, a no-op afterward.
+
+**Round three:** not a design fix this time, just a consequence of the
+project's own rename from "Bible Connections" to "Bible Connection" —
+`user_data_dir()`'s app-name argument determines the per-user directory
+name, so renaming the app moved *where* `user_state.db` lives on disk
+too (`~/Library/Application Support/Bible Connections/` →
+`.../Bible Connection/`), same underlying problem as round two, just
+triggered by a name change instead of a location redesign.
+`_migrate_user_db_location()` now checks both legacy locations — the
+original project-folder path and the old plural-named home directory —
+and moves straight to the current location from whichever it finds; a
+very old install jumps directly there rather than through the
+intermediate plural-named stop.
+
+All three migration checks run unconditionally on every
+`get_user_connection()` call; they're cheap existence checks when
+there's nothing left to migrate.
 
 `LibraryPage` and `ReadingPane` each take a `user_conn` alongside the
 regular content `conn` now (`ReadingPane` only for the "resume where
@@ -373,7 +388,7 @@ signal, not for anything needing real precision.
   to hold more than a couple hundred rows, use this pattern, not
   `ClickableCard`.
 
-## The launcher (`Bible Connections.app`)
+## The launcher (`Bible Connection.app`)
 
 A real macOS `.app` bundle, not a script with a document icon — the
 project used to ship `Run Bible Connections.command` (a plain shell
@@ -444,7 +459,7 @@ directly," this section can only say "should be correct, per the
 documented API."
 
 **What's genuinely verified, independent of any Windows machine:**
-`BibleConnections.ico` is a hand-built multi-resolution icon (Qt can
+`BibleConnection.ico` is a hand-built multi-resolution icon (Qt can
 only write single-frame `.ico` files, so this constructs the container
 format directly: a 6-byte `ICONDIR` header, a 16-byte `ICONDIRENTRY`
 per size, then each size's raw PNG bytes back to back — PNG-compressed
@@ -472,7 +487,7 @@ trips and correctly decodes all 7 embedded sizes.
   *shortcut to one* can. Hence `Create Desktop Shortcut.vbs`: a
   separate, one-time setup script (run once, mirroring the one-time
   `pip install`) that uses `WScript.Shell.CreateShortcut()` to write a
-  real `.lnk` file to the Desktop with `BibleConnections.ico` attached,
+  real `.lnk` file to the Desktop with `BibleConnection.ico` attached,
   pointing at `launch.vbs`. `.lnk` is a proprietary binary format that
   can't be hand-authored as text, which is why this needs its own
   script rather than just being a file included in the repo.

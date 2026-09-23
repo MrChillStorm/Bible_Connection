@@ -39,7 +39,7 @@ class LibraryPage(QWidget):
         outer = QVBoxLayout(self)
         outer.setContentsMargins(28, 24, 28, 24)
 
-        self.title_label = QLabel("Bible Connections")
+        self.title_label = QLabel("Bible Connection")
         self.title_label.setStyleSheet(f"font-size:{fonts.px(26)}px; font-weight: bold; color:{c['curated']};")
         outer.addWidget(self.title_label)
 

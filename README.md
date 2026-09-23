@@ -33,7 +33,7 @@ take a few minutes the first time — that's normal, and you only do
 this once.
 
 **Step 2 — every time you want to read.** Double-click **Bible
-Connections** (the app icon) in this folder. A window opens; that's
+Connection** (the app icon) in this folder. A window opens; that's
 the app.
 
 (If macOS says it can't verify the app the first time, right-click it
@@ -62,12 +62,12 @@ Same install as above — a few hundred megabytes, a few minutes, one
 time only.
 
 Then open the `packaging\windows` folder and double-click **Create
-Desktop Shortcut.vbs** — just once. It adds a **Bible Connections**
+Desktop Shortcut.vbs** — just once. It adds a **Bible Connection**
 icon to your Desktop (a plain script file can't carry a custom icon in
 Windows, which is why this one extra step exists).
 
 **Step 2 — every time you want to read.** Double-click the **Bible
-Connections** icon on your Desktop.
+Connection** icon on your Desktop.
 
 (Windows may show a security warning the first time you open a script
 or shortcut downloaded from the internet — that's normal; allow it to

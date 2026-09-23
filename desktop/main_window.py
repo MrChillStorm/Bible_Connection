@@ -26,7 +26,7 @@ from word_detail_page import WordDetailPage
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Bible Connections")
+        self.setWindowTitle("Bible Connection")
         self.resize(1400, 900)
 
         self.conn = get_connection()

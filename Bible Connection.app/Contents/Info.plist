@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleName</key>
-    <string>Bible Connections</string>
+    <string>Bible Connection</string>
     <key>CFBundleDisplayName</key>
-    <string>Bible Connections</string>
+    <string>Bible Connection</string>
     <key>CFBundleIdentifier</key>
     <string>com.bibleconnections.app</string>
     <key>CFBundleVersion</key>
