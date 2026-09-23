@@ -158,17 +158,18 @@ your choice for next time.
 
 ## Bonus: Ezekiel's Temple in 3D
 
-[![Ezekiel's Temple — an interactive 3D model](extras/ezekiel-temple.jpg)](extras/ezekiel-temple.html)
+[![Ezekiel's Temple — an interactive 3D model](extras/ezekiel-temple.jpg)](https://mrchillstorm.github.io/Bible_Connection/extras/ezekiel-temple.html)
 
-`extras/ezekiel-temple.html` is a separate, self-contained interactive
-model of the temple vision in Ezekiel 40–42 (plus the sanctuary from
-ch. 41, the altar from ch. 43, and the river from ch. 47) — built to
-the cubit measurements the text actually gives, with citations for
-every structure and honest notes on the handful of places the text
-leaves a height or a footprint unstated. Drag to orbit, scroll to
-zoom, tap any structure for its measurement and verse. Click the
-picture above (or double-click the file directly) to open it in a
-browser; no server or install needed.
+A separate, self-contained interactive model of the temple vision in
+Ezekiel 40–42 (plus the sanctuary from ch. 41, the altar from ch. 43,
+and the river from ch. 47) — built to the cubit measurements the text
+actually gives, with citations for every structure and honest notes on
+the handful of places the text leaves a height or a footprint
+unstated. Drag to orbit, scroll to zoom, tap any structure for its
+measurement and verse. Click the picture above to open it live in your
+browser — or, if you've downloaded this folder, double-click
+`extras/ezekiel-temple.html` directly; no server or install needed
+either way.
 
 ## Want to know how it's built, or change something?
 

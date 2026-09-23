@@ -503,6 +503,25 @@ uvicorn api.main:app --reload --app-dir /path/to/Bible_Connection
 Endpoints: `GET /api/verse?ref=John+3:16`, `GET /api/search?q=...`,
 `GET /api/stats`.
 
+## GitHub Pages (for `extras/ezekiel-temple.html`)
+
+Enabled via `gh api -X POST repos/.../pages -f "source[branch]=main" -f "source[path]=/"`,
+serving the whole repo as static files at `https://mrchillstorm.github.io/Bible_Connection/`.
+It exists for exactly one reason: GitHub's own file viewer doesn't
+execute HTML — clicking a plain relative link to a `.html` file in a
+rendered README just shows its source code, not a running page. The
+README's Ezekiel's Temple picture links to the Pages URL specifically
+so it opens as a live page instead. Nothing else in the repo currently
+depends on Pages being enabled, and nothing else is designed to be
+accessed through it — `web/index.html` (the secondary API frontend)
+would technically be reachable there too, but it needs the FastAPI
+backend running to do anything, so visiting it via Pages alone just
+shows a non-functional page, not a broken one. `bible.db` sits in the
+served tree as well, but harmlessly: Pages builds from a plain git
+checkout without running `git lfs pull`, so requesting it there would
+return the small LFS pointer text, not the real 192MB file, and
+nothing links to it regardless.
+
 ## CLI (no server needed)
 
 Everything the API does is also reachable directly through
