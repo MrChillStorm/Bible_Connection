@@ -1,4 +1,4 @@
-# Bible Connections
+# Bible Connection
 
 A KJV Bible reader that shows you how verses connect to each other as
 you read — cross-references, machine-learning-matched similar passages,
