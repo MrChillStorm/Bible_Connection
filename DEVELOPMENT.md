@@ -130,10 +130,12 @@ monotonic and sortable across the whole Bible, which is what makes
 ## Rebuilding from scratch
 
 You don't need to do this — `data/processed/bible.db` is already
-built and committed. This is only relevant if you're changing how the
-data is parsed or want to regenerate a table after editing an ingest
-script. Each script is idempotent (delete-then-insert), and they must
-run in this order since later ones depend on earlier ones:
+built, zipped, and committed as `bible.db.zip` (see "Shipping
+`bible.db`" below); the app extracts it on first launch. This section
+is only relevant if you're changing how the data is parsed or want to
+regenerate a table after editing an ingest script. Each script is
+idempotent (delete-then-insert), and they must run in this order since
+later ones depend on earlier ones:
 
 ```bash
 cd src
@@ -182,6 +184,54 @@ disambiguated dStrong scheme — no wording is altered, only reformatted
 and merged. On (2): `tbesg.txt`/`tbesh.txt` are fetched on demand and
 gitignored, never committed (unlike this project's other raw sources)
 — only the derived, reformatted text inside `bible.db` ships.
+
+## Shipping `bible.db`
+
+`bible.db` (~192MB) isn't committed to git directly — it's zipped down
+to `bible.db.zip` (~82MB, `zip -9`) and *that's* what's tracked;
+`src/db_bootstrap.py` extracts it into `data/processed/bible.db` the
+first time the app runs on a machine (~1.5s, measured), and every
+launch after that just opens the extracted file directly. Two things
+drove this instead of the more obvious options:
+
+- **Committing the raw 192MB file directly doesn't work at all** —
+  GitHub hard-rejects any single git object over 100MB.
+- **Git LFS** (the standard workaround for exactly this problem) was
+  tried first and works, but it bills *download* bandwidth to the repo
+  owner's account, with only 1GB/month included free. At ~190MB a
+  pull, that's roughly five clones a month before LFS starts failing
+  for everyone — trivially exceeded by ordinary traffic, and something
+  like a crawler doing full clones would blow through it on day one
+  with no way to tell "real reader" from "bot" apart at that layer.
+  Zipped-and-committed sidesteps this entirely: it's an ordinary git
+  blob, subject to git's normal (unmetered) clone bandwidth, not LFS's
+  billed bandwidth.
+
+A GitHub Release asset (uploaded separately, downloaded on first
+launch) was considered too — release-asset bandwidth is also unmetered
+— but it adds a real network dependency and failure mode (no internet
+on first launch = broken app) that a git-committed zip just doesn't
+have, so it was dropped once the zip turned out to fit under 100MB
+with room to spare.
+
+**Why extraction instead of reading the zip live**: SQLite needs true
+random-access seeks into the file for its B-tree paging — jumping
+straight to page N wherever a query needs it — and DEFLATE/zip
+compression only decompresses sequentially from the start of a member.
+There's no way to seek into the middle of a compressed stream, so the
+zip has to become a real file on disk before SQLite can open it at
+all. `extract_bible_db()` extracts to a temp name and renames into
+place atomically, so a crash or a full disk mid-extract can't leave a
+truncated `bible.db` that a later launch would mistake for the real
+thing.
+
+Note this only fixes bandwidth for *future* clones — the original
+192MB LFS blob still exists in this repo's earlier history (the
+initial commit and the footnote-anchoring fix that followed it), since
+removing it fully would mean rewriting history and force-pushing.
+`git clone` only pulls LFS objects the checked-out tree actually
+references though, and the current tree no longer references it at
+all, so a normal clone today never touches it or its bandwidth cost.
 
 ## How connections are found
 
@@ -564,11 +614,10 @@ depends on Pages being enabled, and nothing else is designed to be
 accessed through it — `web/index.html` (the secondary API frontend)
 would technically be reachable there too, but it needs the FastAPI
 backend running to do anything, so visiting it via Pages alone just
-shows a non-functional page, not a broken one. `bible.db` sits in the
-served tree as well, but harmlessly: Pages builds from a plain git
-checkout without running `git lfs pull`, so requesting it there would
-return the small LFS pointer text, not the real 192MB file, and
-nothing links to it regardless.
+shows a non-functional page, not a broken one. `bible.db.zip` sits in
+the served tree as well, but harmlessly — nothing links to it, and
+Pages serving it as a static download wouldn't do any harm even if
+something did.
 
 ## CLI (no server needed)
 

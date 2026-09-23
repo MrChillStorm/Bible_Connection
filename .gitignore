@@ -4,8 +4,13 @@ __pycache__/
 .DS_Store
 # Claude Code's own browser-preview tooling config -- not part of the project
 .claude/
-# bible.db (verses, connections, footnotes, Strong's, Scofield notes) IS
-# committed -- it's the pre-built content database the app ships with.
+# bible.db itself (verses, connections, footnotes, Strong's, Scofield
+# notes) is NOT committed -- it's ~190MB, over git's 100MB single-file
+# limit. bible.db.zip (its zipped form, ~82MB) IS committed instead;
+# the app extracts it into bible.db on first launch (see
+# src/db_bootstrap.py). Rebuilding it locally (ingestion scripts,
+# tests) regenerates this file, so it must stay ignored.
+data/processed/bible.db
 # user_state.db is personal reading history and must never be committed.
 data/processed/user_state.db
 data/processed/*.db-journal
