@@ -1,5 +1,7 @@
 # Bible Connection
 
+![Bible Connection — Genesis 22 with curated cross-references shown alongside](Bible_Connection.jpg)
+
 A KJV Bible reader that shows you how verses connect to each other as
 you read — cross-references, machine-learning-matched similar passages,
 red-letter text, the King James translators' own footnotes, a 1917
