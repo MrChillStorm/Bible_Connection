@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bible-connection"
+version = "1.0.0"
+description = "A KJV Bible reader that shows how verses connect to each other as you read."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "MrChillStorm" }]
+requires-python = ">=3.10"
+# all the reader itself needs; the rest is only for rebuilding the database or the web API
+dependencies = ["PySide6>=6.5", "platformdirs"]
+keywords = ["bible", "kjv", "cross-references", "strongs", "concordance", "pyside6"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: MacOS X",
+    "Environment :: Win32 (MS Windows)",
+    "Environment :: X11 Applications :: Qt",
+    "Intended Audience :: End Users/Desktop",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Topic :: Religion",
+]
+
+[project.optional-dependencies]
+# rebuilding the database from data/raw, in a clone: python3 -m bible_connection.pipeline.<step>
+pipeline = ["sentence-transformers", "numpy", "scipy", "beautifulsoup4"]
+# the web API: uvicorn bible_connection.api:app
+api = ["fastapi", "uvicorn[standard]"]
+
+[project.urls]
+Homepage = "https://github.com/MrChillStorm/Bible_Connection"
+
+# `bible-connection` on the command line runs the same main() as `python3 -m bible_connection`
+[project.gui-scripts]
+bible-connection = "bible_connection.app:main"
+
+[tool.setuptools.packages.find]
+include = ["bible_connection*"]
+
+[tool.setuptools.package-data]
+"bible_connection" = ["data/bible.db.zip"]
+"bible_connection.core" = ["*.sql"]
+"bible_connection.api" = ["index.html"]

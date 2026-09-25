@@ -1,6 +1,6 @@
 """Regenerates Bible Connection.app's icon from packaging/icon.svg --
 run this after editing the SVG. Uses PySide6's QSvgRenderer (already a
-project dependency, via desktop/cards.py's own _svg_icon()) rather than
+project dependency, via bible_connection/ui/cards.py's own _svg_icon()) rather than
 pulling in Pillow or another image library just for this.
 
 macOS only -- relies on the built-in `iconutil` command.

@@ -2,48 +2,62 @@
 
 This is the technical companion to [README.md](README.md). Read that
 first if you just want to run the app — nothing here is required for
-normal use, since the built database (`data/processed/bible.db`)
-already ships in this repo.
+normal use, since the built database already ships inside the package
+(`bible_connection/data/bible.db.zip`).
 
 ## Project layout
 
 ```
-src/                 data layer: parsing, ingestion scripts, query helpers
-  schema.sql         SQLite schema
-  db.py              connection + schema init/migration
-  books.py           canonical book list, ordering, verse_id()
-  osis_parser.py      parses the OSIS-tagged KJV XML/JSON
-  anchor_utils.py     locates a footnote's catchword as a text span
-  connections.py       get_connections(), search_text(), etc. — used by both
-                        the desktop app and the API
-  ingest_*.py          one-shot data loaders (see "Rebuilding from scratch")
-  fetch_scofield.py    downloads Scofield notes from Wikisource
-  embeddings.py        computes verse embeddings + semantic edges
-desktop/             PySide6 desktop app (the primary interface)
-api/                 FastAPI web API (secondary interface)
-web/                 minimal static HTML frontend for the API
-data/raw/            source files (KJV OSIS, cross-references, Strong's, Scofield HTML)
-data/processed/      bible.db -- the only thing left here; see below for user_state.db
+bible_connection/        the app, as one Python package (python3 -m bible_connection)
+  app.py                 startup: database setup on first launch, then the window
+  core/                  data layer: the two databases and every query the app makes
+    schema.sql           SQLite schema of the content database
+    user_schema.sql      SQLite schema of the reading state
+    db.py                connections, where both files live, migrations
+    db_bootstrap.py      extracts the shipped database (and packs a rebuilt one)
+    books.py             canonical book list, ordering, verse_id()
+    connections.py       get_connections(), search_text(), etc. — used by the app and the API
+    ...                  chapters, footnotes, scofield, strongs, reading_state, book_status
+  ui/                    PySide6 desktop interface (the primary one)
+  pipeline/              rebuilds the database from data/raw (see "Rebuilding from scratch")
+    osis_parser.py       parses the OSIS-tagged KJV XML/JSON
+    anchor_utils.py      locates a footnote's catchword as a text span
+    ingest_*.py          one-shot data loaders
+    fetch_scofield.py    downloads Scofield notes from Wikisource
+    embeddings.py        computes verse embeddings + semantic edges
+    pack.py              zips the rebuilt database into data/bible.db.zip
+  api/                   FastAPI web API (secondary), with its one-page frontend
+  data/bible.db.zip      the shipped content database
+data/raw/                source files (KJV OSIS, cross-references, Strong's, Scofield HTML)
+tests/                   smoke tests
+packaging/               the Mac app's icon source
+Bible Connection.app     the Mac launcher
 ```
 
 There are deliberately **two** SQLite files, opened separately
-(`db.get_connection()` / `db.get_user_connection()`), and they don't
-even live in the same directory:
+(`db.get_connection()` / `db.get_user_connection()`), side by side in
+the OS's per-user data directory (`db.DATA_DIR` — e.g.
+`~/Library/Application Support/Bible Connection/` on macOS, via the
+`platformdirs` package):
 
-- **`data/processed/bible.db`** — verses, connections, footnotes,
-  Strong's, Scofield notes. Built by the ingestion scripts, unchanged
-  by normal use of the app, and committed to git so a fresh clone
-  works immediately.
-- **`user_state.db`, in the OS's per-user data directory** (e.g.
-  `~/Library/Application Support/Bible Connection/` on macOS, via the
-  `platformdirs` package — `db.USER_DB_PATH`) — reading position,
-  last-opened book, read/unread checkboxes. The only thing that
-  changes as you read, and deliberately outside the project folder
-  entirely: two OS accounts sharing one copy of the app get
-  independent reading histories, moving/redownloading the project
-  folder doesn't strand anyone's progress, and it structurally can't
-  end up in a git commit (nothing to `.gitignore` — it was never under
-  the project directory to begin with).
+- **`bible.db`** — verses, connections, footnotes, Strong's, Scofield
+  notes. Built by the pipeline, unchanged by normal use of the app,
+  and shipped zipped inside the package; the app extracts it on first
+  launch, and again after an update that ships a new one (see
+  "Shipping `bible.db`").
+- **`user_state.db`** — reading position, last-opened book, read/unread
+  checkboxes. The only thing that changes as you read, and a file of
+  its own so an update can replace `bible.db` wholesale without
+  touching anyone's reading history.
+
+Both live outside the app's own folder: two OS accounts sharing one
+copy of the app get independent reading histories, moving,
+redownloading or reinstalling the app doesn't strand anyone's
+progress, an installed package (which can't be written to) works the
+same as a clone, and neither file can end up in a git commit.
+`BIBLE_CONNECTION_HOME=/some/folder` points both at another folder
+instead — the tests do this, and it's how to try a rebuilt database
+without touching your own copy.
 
 These used to be one file, then one directory; splitting them was a
 deliberate fix in two stages, not the original design (see "Personal
@@ -114,6 +128,13 @@ and moves straight to the current location from whichever it finds; a
 very old install jumps directly there rather than through the
 intermediate plural-named stop.
 
+**Round four (1.0):** `bible.db` itself moved too, from
+`data/processed/` in the project folder to the same per-user directory,
+when the app became an installable package. Nothing needed migrating:
+it's extracted fresh from the shipped zip, and a leftover
+`data/processed/bible.db` in an older clone is simply no longer used
+(safe to delete).
+
 All three migration checks run unconditionally on every
 `get_user_connection()` call; they're cheap existence checks when
 there's nothing left to migrate.
@@ -129,27 +150,36 @@ monotonic and sortable across the whole Bible, which is what makes
 
 ## Rebuilding from scratch
 
-You don't need to do this — `data/processed/bible.db` is already
-built, zipped, and committed as `bible.db.zip` (see "Shipping
+You don't need to do this — the database is already built, zipped, and
+committed as `bible_connection/data/bible.db.zip` (see "Shipping
 `bible.db`" below); the app extracts it on first launch. This section
 is only relevant if you're changing how the data is parsed or want to
-regenerate a table after editing an ingest script. Each script is
-idempotent (delete-then-insert), and they must run in this order since
-later ones depend on earlier ones:
+regenerate a table after editing an ingest script. It needs a clone
+(the source files in `data/raw/` don't ship in the package) and the
+pipeline's extra libraries:
 
 ```bash
-cd src
-python3 ingest_kjv.py                # base verse text, from data/raw/kjv.csv
-python3 ingest_words_of_christ.py    # red-letter spans, from kjv_osis.json
-python3 ingest_footnotes.py          # KJV translators' footnotes, from kjv_osis.json
-python3 ingest_strongs_words.py      # per-word Strong's tagging, from kjv_osis.json
-python3 ingest_strongs_dictionary.py # Strong's Hebrew/Greek dictionary entries (base definitions)
-python3 fetch_strongs_lexicon.py     # downloads STEPBible's richer Greek/Hebrew lexicon (not committed -- see below)
-python3 ingest_strongs_lexicon.py    # replaces base definitions with the richer lexicon text where available
-python3 ingest_cross_references.py   # curated cross-references (openbible.info/TSK)
-python3 fetch_scofield.py            # downloads Scofield HTML from Wikisource (slow, network-bound)
-python3 ingest_scofield.py           # parses the downloaded HTML into scofield_notes
-python3 embeddings.py                # encodes every verse + computes semantic edges (slow, CPU-bound)
+pip install -e ".[pipeline]"
+```
+
+Each step is idempotent (delete-then-insert) and writes straight into
+the extracted `bible.db` (set `BIBLE_CONNECTION_HOME` to rebuild into a
+separate folder instead). Run them as modules from the repo root, in
+this order, since later ones depend on earlier ones:
+
+```bash
+python3 -m bible_connection.pipeline.ingest_kjv                # base verse text, from data/raw/kjv.csv
+python3 -m bible_connection.pipeline.ingest_words_of_christ    # red-letter spans, from kjv_osis.json
+python3 -m bible_connection.pipeline.ingest_footnotes          # KJV translators' footnotes, from kjv_osis.json
+python3 -m bible_connection.pipeline.ingest_strongs_words      # per-word Strong's tagging, from kjv_osis.json
+python3 -m bible_connection.pipeline.ingest_strongs_dictionary # Strong's Hebrew/Greek dictionary entries (base definitions)
+python3 -m bible_connection.pipeline.fetch_strongs_lexicon     # downloads STEPBible's richer Greek/Hebrew lexicon (not committed -- see below)
+python3 -m bible_connection.pipeline.ingest_strongs_lexicon    # replaces base definitions with the richer lexicon text where available
+python3 -m bible_connection.pipeline.ingest_cross_references   # curated cross-references (openbible.info/TSK)
+python3 -m bible_connection.pipeline.fetch_scofield            # downloads Scofield HTML from Wikisource (slow, network-bound)
+python3 -m bible_connection.pipeline.ingest_scofield           # parses the downloaded HTML into scofield_notes
+python3 -m bible_connection.pipeline.embeddings                # encodes every verse + computes semantic edges (slow, CPU-bound)
+python3 -m bible_connection.pipeline.pack                      # zips the result into bible_connection/data/bible.db.zip, ready to commit
 ```
 
 `embeddings.py` takes `--skip-encode` to reuse an existing
@@ -188,10 +218,12 @@ gitignored, never committed (unlike this project's other raw sources)
 ## Shipping `bible.db`
 
 `bible.db` (~192MB) isn't committed to git directly — it's zipped down
-to `bible.db.zip` (~82MB, `zip -9`) and *that's* what's tracked;
-`src/db_bootstrap.py` extracts it into `data/processed/bible.db` the
-first time the app runs on a machine (~1.5s, measured), and every
-launch after that just opens the extracted file directly. Two things
+to `bible_connection/data/bible.db.zip` (~82MB, maximum compression, by
+`pipeline/pack.py`) and *that's* what's tracked, and what the package
+ships; `bible_connection/core/db_bootstrap.py` extracts it into the
+per-user data folder the first time the app runs on a machine (~1.5s,
+measured), and every launch after that just opens the extracted file
+directly. Two things
 drove this instead of the more obvious options:
 
 - **Committing the raw 192MB file directly doesn't work at all** —
@@ -225,6 +257,16 @@ place atomically, so a crash or a full disk mid-extract can't leave a
 truncated `bible.db` that a later launch would mistake for the real
 thing.
 
+**Updates.** Each extraction writes `bible.db.source` next to the
+database: the CRC and size the zip already stores for its `bible.db`
+member, so comparing costs nothing (no hashing 190MB on every launch).
+When an update ships a different zip, the two stop matching and the
+next launch extracts again, with the same "Setting up your Bible
+library" notice as the first time. A database rebuilt in place by the
+pipeline keeps its old record — the pipeline never touches it — so
+it's never silently replaced, and `pack.py` records the zip it has just
+written, so packing doesn't trigger a pointless re-extract either.
+
 Note this only fixes bandwidth for *future* clones — the original
 192MB LFS blob still exists in this repo's earlier history (the
 initial commit and the footnote-anchoring fix that followed it), since
@@ -243,7 +285,7 @@ Scripture Knowledge cross-reference data — connections people have
 been drawing between passages for centuries. Weight is their supplied
 relevance score.
 
-**Semantic edges** are computed by [`embeddings.py`](src/embeddings.py). Every verse is
+**Semantic edges** are computed by [`embeddings.py`](bible_connection/pipeline/embeddings.py). Every verse is
 encoded with `sentence-transformers/all-MiniLM-L6-v2`
 (normalized, so dot product == cosine similarity), and for each verse
 we brute-force its cosine similarity against all ~31k others in
@@ -362,10 +404,10 @@ signal, not for anything needing real precision.
   `sentence-transformers` dependency is only ever imported by
   `embeddings.py`, not by the desktop app itself.
 - Light/dark mode is read once at launch via Qt's
-  `styleHints().colorScheme()` (`desktop/theme.py`), not polled — the
+  `styleHints().colorScheme()` (`bible_connection/ui/theme.py`), not polled — the
   app doesn't currently react to the OS theme changing while it's
   already running.
-- **Live font scaling** (`desktop/fonts.py`) is a single module-level
+- **Live font scaling** (`bible_connection/ui/fonts.py`) is a single module-level
   multiplier (`fonts.px(base) -> round(base * scale)`), persisted via
   `reading_state.get/set_font_scale()` (another `app_state` key,
   alongside `last_book`). Every explicit `font-size` in the desktop app
@@ -383,10 +425,10 @@ signal, not for anything needing real precision.
     its own `font-size` needs an explicit `refresh_fonts()` call,
     which `MainWindow._change_font_scale()` fires on every pane after
     updating the global stylesheet.
-  - `build_app_stylesheet()` lives in `theme.py`, not `main.py` (where
+  - `build_app_stylesheet()` lives in `theme.py`, not `app.py` (where
     it was originally defined) — `main_window.py` needs to call it on
-    every scale change, and `main.py` imports `MainWindow` from
-    `main_window.py`, so leaving it in `main.py` would have been a
+    every scale change, and `app.py` imports `MainWindow` from
+    `main_window.py`, so leaving it in `app.py` would have been a
     circular import.
   - Each pane's `refresh_fonts()` re-renders its *current* content
     rather than re-querying, since re-querying isn't always safe to
@@ -451,7 +493,7 @@ signal, not for anything needing real precision.
   it's a usability limitation (two tiny adjacent superscript letters
   with no visual gap) rather than a data or resolution bug, left as-is.
 - Every card in the Connections/Search/Strong's/Discover panes shares
-  one `ClickableCard` base (`desktop/cards.py`) with a copy-to-clipboard
+  one `ClickableCard` base (`bible_connection/ui/cards.py`) with a copy-to-clipboard
   button rendered from inline SVG (`_svg_icon()`) rather than a Unicode
   glyph, since glyph coverage for something like U+2398 varies by font.
   The button's own click doesn't trigger the card's `mousePressEvent`
@@ -481,10 +523,13 @@ anything on Windows (`.command` is a macOS/Finder-specific convention;
 double-clicking one there just prompts "what program should open this
 file?"). The bundle is minimal, not a PyInstaller-style frozen build —
 it's `Contents/Info.plist` + `Contents/Resources/AppIcon.icns` +
-`Contents/MacOS/launch`, a shell script that still just runs
-`python3 main.py` from the `desktop/` directory. Packages still need
-to be pip-installed once per the README; this only replaces the
-double-click-to-run step, not the setup step.
+`Contents/MacOS/launch`, a shell script that just runs
+`python3 -m bible_connection` from the folder the app sits in, after
+checking that the two packages the reader needs (PySide6 and
+platformdirs) are importable. Packages still need to be pip-installed
+once per the README; this only replaces the double-click-to-run step,
+not the setup step. (Installing with pipx instead gives a
+`bible-connection` command and needs no app bundle at all.)
 
 **The one non-obvious bug, caught only by testing via `open` (i.e. the
 same path a real double-click takes) rather than running the script
@@ -506,7 +551,7 @@ install).
 The icon (source at `packaging/icon.svg`, rebuildable via
 `packaging/build_icon.py`) was generated, not drawn by hand — the SVG
 is rendered to every required size via `QSvgRenderer` (the same
-technique `desktop/cards.py`'s `_svg_icon()` already uses), assembled
+technique `bible_connection/ui/cards.py`'s `_svg_icon()` already uses), assembled
 into a `.iconset` folder, then run through macOS's built-in
 `iconutil -c icns`. Two lessons from actually testing it rather than
 just building it:
@@ -530,72 +575,31 @@ just building it:
   majority of third-party Mac apps handle this, since few bother with
   real light/dark/tinted variants at all.
 
-## The Windows launcher (`packaging/windows/`)
+## Windows (no launcher of its own since 1.0)
 
-Everything in this section is built from correct, stable, decades-old
-Windows APIs and reasoned through carefully, but — unlike the macOS
-`.app` above, which was tested by actually launching it repeatedly via
-`open` — **none of it has run on a real Windows machine**, because this
-codebase's only development machine is a Mac with no Windows Script
-Host available to test against. Where the macOS section says "confirmed
-directly," this section can only say "should be correct, per the
-documented API."
-
-**What's genuinely verified, independent of any Windows machine:**
-`BibleConnection.ico` is a hand-built multi-resolution icon (Qt can
-only write single-frame `.ico` files, so this constructs the container
-format directly: a 6-byte `ICONDIR` header, a 16-byte `ICONDIRENTRY`
-per size, then each size's raw PNG bytes back to back — PNG-compressed
-icon frames have been standard since Windows Vista). Checked two ways
-that don't depend on Windows at all: `file` (libmagic, independent of
-anything in this repo) correctly identifies it as "MS Windows icon
-resource - 7 icons" with the right per-frame details, and Qt's own
-`QImageReader` — a separate code path from the writer above — round-
-trips and correctly decodes all 7 embedded sizes.
-
-**What's reasoned-through but unverified:** the two `.vbs` files.
-- `launch.vbs` is the actual executable behind the icon: it runs
-  hidden (`shell.Run(cmd, 0, ...)` — the `0` is what suppresses the
-  console window a `.bat` double-click would otherwise flash), checks
-  for the required packages via `py -3` (the Python Launcher for
-  Windows, installed system-wide by the official python.org installer
-  specifically to avoid PATH ambiguity — more reliable than plain
-  `python`/`python3`, which can resolve to a Microsoft Store redirect
-  stub that does nothing useful if no real Python is installed), and
-  shows a native `MsgBox` plus opens a real Command Prompt at the
-  project folder if that check fails, mirroring what the macOS version
-  does with `osascript`/`open -a Terminal`.
-- A `.vbs` file can't carry a custom icon of its own in Windows
-  Explorer (it always shows the default script icon) — only a
-  *shortcut to one* can. Hence `Create Desktop Shortcut.vbs`: a
-  separate, one-time setup script (run once, mirroring the one-time
-  `pip install`) that uses `WScript.Shell.CreateShortcut()` to write a
-  real `.lnk` file to the Desktop with `BibleConnection.ico` attached,
-  pointing at `launch.vbs`. `.lnk` is a proprietary binary format that
-  can't be hand-authored as text, which is why this needs its own
-  script rather than just being a file included in the repo.
-- Quoting throughout uses `Q = Chr(34)` and string concatenation rather
-  than literal nested quote characters, specifically to avoid the kind
-  of nested-quote counting mistake that actually broke the macOS
-  `.command` file's AppleScript earlier in this same project (see the
-  macOS section above) — safer to verify by eye than four consecutive
-  quote characters.
-
-If this is ever tested on real Windows and something doesn't work,
-start with whichever assumption above is least certain: that `py`
-exists and is on PATH (it might not be, depending on how Python was
-installed), and that `WScript.Shell.Run`'s exit-code semantics for a
-failed `cmd /c` invocation behave as documented.
+Up to 1.0 the repo shipped a Windows launcher in `packaging/windows/`: a
+hand-built multi-resolution `.ico`, a `launch.vbs` that started the app
+hidden via the `py` launcher, and a `Create Desktop Shortcut.vbs`, run
+once, to put an icon on the Desktop (a `.vbs` file can't carry an icon
+of its own; only a shortcut to one can). None of it had ever run on a
+real Windows machine, and all of it existed only because a folder of
+Python files has no natural way to be started there. Installing with
+pipx gives Windows a real `bible-connection.exe` instead — pip's
+standard launcher for a GUI entry point, which starts without a console
+window — so the scripts and the one-time shortcut step went.
+`python -m bible_connection` works from a download too.
 
 ## Web UI (secondary)
 
-A small FastAPI app (`api/main.py`) exposes the same connection/search
-logic over HTTP, with a static single-page frontend in `web/index.html`.
-This exists mainly for quick experimentation outside Qt (e.g. checking
-what an API client would see). Run it with:
+A small FastAPI app (`bible_connection/api/`) exposes the same
+connection/search logic over HTTP, with a static single-page frontend
+(`bible_connection/api/index.html`). This exists mainly for quick
+experimentation outside Qt (e.g. checking what an API client would
+see). Its libraries are an optional extra; run it with:
 
 ```bash
-uvicorn api.main:app --reload --app-dir /path/to/Bible_Connection
+pip install -e ".[api]"
+uvicorn bible_connection.api:app --reload
 ```
 
 Endpoints: `GET /api/verse?ref=John+3:16`, `GET /api/search?q=...`,
@@ -611,7 +615,7 @@ rendered README just shows its source code, not a running page. The
 README's Ezekiel's Temple picture links to the Pages URL specifically
 so it opens as a live page instead. Nothing else in the repo currently
 depends on Pages being enabled, and nothing else is designed to be
-accessed through it — `web/index.html` (the secondary API frontend)
+accessed through it — `bible_connection/api/index.html` (the secondary API frontend)
 would technically be reachable there too, but it needs the FastAPI
 backend running to do anything, so visiting it via Pages alone just
 shows a non-functional page, not a broken one. `bible.db.zip` sits in
@@ -622,9 +626,24 @@ something did.
 ## CLI (no server needed)
 
 Everything the API does is also reachable directly through
-`src/connections.py`'s functions from a `python3` REPL — `find_verse()`,
-`get_connections()`, `search_text()` — useful for one-off queries
-against the database without starting anything.
+`bible_connection.core.connections`' functions from a `python3` REPL —
+`find_verse()`, `get_connections()`, `search_text()` — useful for
+one-off queries against the database without starting anything. For a
+quick look at one verse, `python3 -m bible_connection.core.connections
+"John 3:16"` prints its connections.
+
+## Tests
+
+```bash
+python3 -m unittest discover tests
+```
+
+Smoke tests, run offscreen in a throwaway data folder
+(`BIBLE_CONNECTION_HOME`), so your own reading history is never touched:
+the shipped database extracts (and would again for a new zip), a first
+launch with no reading history works, the queries the app makes
+answer, the window opens and reads a chapter, and — with the `[api]`
+extra installed — the API responds.
 
 ## Extending it
 

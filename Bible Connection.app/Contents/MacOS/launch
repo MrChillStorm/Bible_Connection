@@ -1,5 +1,6 @@
 #!/bin/bash
-# The actual executable behind the Bible Connections.app icon.
+# The actual executable behind the Bible Connection.app icon: runs
+# `python3 -m bible_connection` from the folder this app sits in.
 #
 # GUI-launched apps on macOS don't get PATH from the user's shell
 # profile the way a Terminal window does -- plain 'python3' here can
@@ -13,14 +14,14 @@ DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
 export DIR
 USER_SHELL="${SHELL:-/bin/bash}"
 
-if ! "$USER_SHELL" -l -c 'python3 -c "import fastapi, PySide6, sentence_transformers, bs4"' 2>/dev/null; then
+if ! "$USER_SHELL" -l -c 'python3 -c "import PySide6, platformdirs"' 2>/dev/null; then
     osascript <<'APPLESCRIPT'
 display dialog "Required Python packages are not installed yet.
 
-Open Terminal in this folder and follow the Install the packages section in README.md, then try opening this app again." with title "Bible Connections" buttons {"OK"} default button "OK" with icon caution
+Open Terminal in this folder and follow the From a download section in README.md, then try opening this app again." with title "Bible Connection" buttons {"OK"} default button "OK" with icon caution
 APPLESCRIPT
     open -a Terminal "$DIR"
     exit 1
 fi
 
-exec "$USER_SHELL" -l -c 'cd "$DIR/desktop" && exec python3 main.py'
+exec "$USER_SHELL" -l -c 'cd "$DIR" && exec python3 -m bible_connection'

@@ -4,18 +4,16 @@ __pycache__/
 .DS_Store
 # Claude Code's own browser-preview tooling config -- not part of the project
 .claude/
-# bible.db itself (verses, connections, footnotes, Strong's, Scofield
-# notes) is NOT committed -- it's ~190MB, over git's 100MB single-file
-# limit. bible.db.zip (its zipped form, ~82MB) IS committed instead;
-# the app extracts it into bible.db on first launch (see
-# src/db_bootstrap.py). Rebuilding it locally (ingestion scripts,
-# tests) regenerates this file, so it must stay ignored.
-data/processed/bible.db
-# user_state.db is personal reading history and must never be committed.
-data/processed/user_state.db
-data/processed/*.db-journal
-data/processed/*.db-wal
-data/processed/*.db-shm
+# pip / pipx build output
+build/
+dist/
+*.egg-info/
+# bible.db (~190MB) is never in the repo: bible_connection/data/bible.db.zip
+# (~82MB) is what's committed, and the app extracts it into the per-user
+# data folder on first launch (see bible_connection/core/db_bootstrap.py).
+# data/processed/ is where it (and user_state.db) lived before 1.0.
+data/processed/
+bible_connection/data/*.tmp
 data/raw/cross-references.zip
 # STEPBible-Data's CC BY 4.0 terms ask that this be redistributed only
 # from their own GitHub repo, not copied elsewhere -- re-download with

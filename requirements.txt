@@ -1,8 +1,2 @@
-fastapi
-uvicorn[standard]
-sentence-transformers
-numpy
 PySide6
-beautifulsoup4
-scipy
 platformdirs

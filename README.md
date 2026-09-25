@@ -1,6 +1,6 @@
 # Bible Connection
 
-![Bible Connection — Genesis 22 with curated cross-references shown alongside](Bible_Connection.jpg)
+![Bible Connection — Genesis 22 with curated cross-references shown alongside](docs/screenshot.jpg)
 
 A KJV Bible reader that shows you how verses connect to each other as
 you read — cross-references, machine-learning-matched similar passages,
@@ -11,12 +11,45 @@ on.
 
 ## Getting started
 
-There's no server to start, no browser to open, and nothing else to
-set up beyond the one-time step below — the Bible text and every
-connection between verses are already built into the files in this
-folder.
+There's no server to start, no browser to open, and nothing to connect
+to — the Bible text and every connection between verses come built
+into the app. You need Python 3.10 or newer, on macOS, Windows or Linux.
 
-### macOS
+### Install with pipx (recommended)
+
+[pipx](https://pipx.pypa.io) installs Bible Connection with everything
+it needs, keeps it separate from anything else on your computer, and
+gives you a `bible-connection` command to start it. First get pipx
+itself, once:
+
+- **macOS:** `brew install pipx` (with [Homebrew](https://brew.sh)),
+  then `pipx ensurepath`
+- **Windows:** `py -m pip install --user pipx`, then `py -m pipx ensurepath`
+- **Linux:** your distribution's `pipx` package (e.g.
+  `sudo apt install pipx`), then `pipx ensurepath`
+
+Then open a new Terminal (or Command Prompt) window and run:
+
+```bash
+pipx install https://github.com/MrChillStorm/Bible_Connection/archive/main.zip
+bible-connection
+```
+
+The install downloads a few hundred megabytes — the Bible library
+itself, and the toolkit that draws the window — and takes a few
+minutes the first time. The very first launch then spends a moment
+setting up the library. Later:
+
+```bash
+pipx upgrade bible-connection     # get the latest version
+pipx uninstall bible-connection   # remove it (your reading history stays)
+```
+
+### From a download (macOS)
+
+If you'd rather not install anything beyond Python itself, download
+this project (the green **Code** button → **Download ZIP**, then
+unzip it), and:
 
 **Step 1 — one time only.** Open **Terminal** (Applications → Utilities
 → Terminal), type `cd ` (with a space after it, don't press Return
@@ -28,15 +61,16 @@ Return, then paste this and press Return again:
 pip3 install -r requirements.txt
 ```
 
-This installs the handful of code libraries the app needs (the
-window-drawing toolkit, and the small machine-learning model that
-finds similar verses). It downloads a few hundred megabytes and can
-take a few minutes the first time — that's normal, and you only do
-this once.
+This installs the two code libraries the app needs (the toolkit that
+draws the window, and a small helper that finds the right folder for
+your reading history). If it answers that the environment is
+"externally managed" — Homebrew's Python does that — use pipx above
+instead.
 
 **Step 2 — every time you want to read.** Double-click **Bible
 Connection** (the app icon) in this folder. A window opens; that's
-the app.
+the app. The app has to stay in this folder, since it starts the code
+next to it.
 
 (If macOS says it can't verify the app the first time, right-click it
 → Open, then click Open again in the dialog that appears. That's a
@@ -48,38 +82,23 @@ probably aren't installed yet — the app will tell you this in a dialog
 and open Terminal for you. Just run the `pip3 install` command from
 Step 1 again there — it's safe to run more than once.
 
-### Windows
+### From a download (Windows and Linux)
 
-**Step 1 — one time only.** Open **Command Prompt** (search for it in
-the Start menu), type `cd ` (with a space after it, don't press Enter
-yet), then drag the `Bible_Connection` folder from File Explorer into
-the Command Prompt window — that fills in the correct path for you.
-Press Enter, then paste this and press Enter again:
+In a Command Prompt or terminal inside the downloaded folder, once:
 
 ```bash
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 ```
 
-Same install as above — a few hundred megabytes, a few minutes, one
-time only.
+and then, every time you want to read:
 
-Then open the `packaging\windows` folder and double-click **Create
-Desktop Shortcut.vbs** — just once. It adds a **Bible Connection**
-icon to your Desktop (a plain script file can't carry a custom icon in
-Windows, which is why this one extra step exists).
+```bash
+python -m bible_connection
+```
 
-**Step 2 — every time you want to read.** Double-click the **Bible
-Connection** icon on your Desktop.
-
-(Windows may show a security warning the first time you open a script
-or shortcut downloaded from the internet — that's normal; allow it to
-run.)
-
-**If double-clicking doesn't open anything**, the packages from Step 1
-probably aren't installed yet — the app will tell you this and open a
-Command Prompt for you.
-
-The Windows setup is newer than the Mac version — if anything behaves
+(On Windows, `py` works in place of `python`.) Bible Connection is
+built and tested on macOS; it's plain Qt, so Windows and Linux should
+work the same, but haven't been tried — if anything behaves
 differently than described here, that's worth reporting.
 
 ## What you can do in the app
@@ -151,12 +170,30 @@ click it to copy that reference and text to your clipboard (see the
 Discover tab above for the one exception).
 
 **Light and dark mode.** The app automatically matches whatever your
-Mac is set to.
+computer is set to.
 
 **Text size.** The "A-" / "A+" buttons above the reading pane make
 every bit of text in the app — the Bible text, cards, buttons, tab
 labels, everything — a little smaller or larger at once. It remembers
 your choice for next time.
+
+## Your reading history
+
+Where you stopped in every book, the books you've checked off and your
+text size are kept in one small file, `user_state.db`, next to the
+app's Bible library (`bible.db`), in your system's usual place for app
+data:
+
+| System | Folder |
+|---|---|
+| macOS | `~/Library/Application Support/Bible Connection` |
+| Windows | `C:\Users\<you>\AppData\Local\Bible Connection` |
+| Linux | `~/.local/share/Bible Connection` (or `$XDG_DATA_HOME/Bible Connection`) |
+
+That's outside the app itself, so updating, reinstalling or moving the
+app never touches your reading history. After an update that brings a
+new version of the Bible library, the app sets it up again on the next
+launch, the same way as the first time.
 
 ## Bonus: Ezekiel's Temple in 3D
 
@@ -176,5 +213,5 @@ either way.
 ## Want to know how it's built, or change something?
 
 See [DEVELOPMENT.md](DEVELOPMENT.md) — the data pipeline, database
-schema, how the machine-learning connections are computed, and how to
-extend it.
+schema, how the machine-learning connections are computed, how to
+extend it, and the tests.
